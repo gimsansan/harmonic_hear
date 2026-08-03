@@ -1,8 +1,7 @@
 /**
- * 음고 감각 적응 훈련 화면 (§7, §8)
+ * 음고 감각 적응 훈련 화면 (§4.3, §7, §8)
  *
- * Phase 2 엔진(AudioEngine + StaircaseEngine)과
- * Phase 3 컴포넌트(ModeTab, WaveVisualizer, AnswerButtons, FeedbackCard)를 통합.
+ * Phase 4: SessionManager 통합, 평가/훈련 이원화, 세션 저장
  *
  * 동작 순서 (§6):
  *   소리 A (기준, 440Hz) 1.0s → 대기 0.5s → 소리 B (비교) 1.0s → 답변 대기
@@ -16,11 +15,13 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { AudioEngine, SoundMode } from '../src/audio/AudioEngine';
-import { StaircaseEngine } from '../src/training/StaircaseEngine';
+import { SessionManager, SessionMode } from '../src/training/SessionManager';
+import { TrainingStorage } from '../src/storage/TrainingStorage';
 import { COLORS, SPACING, FONT_SIZE, RADIUS, AUDIO } from '../src/constants/theme';
 
 import ModeTab from '../src/components/ModeTab';
@@ -33,18 +34,20 @@ type GameState = 'idle' | 'playing' | 'waiting' | 'answered';
 export default function TrainingScreen() {
   const router = useRouter();
 
-  // 엔진 인스턴스 (ref로 유지 — 리렌더링 방지)
+  // 엔진 인스턴스
   const audioEngine = useRef(new AudioEngine()).current;
-  const staircaseEngine = useRef(new StaircaseEngine()).current;
+  const sessionManager = useRef(new SessionManager()).current;
 
   // UI 상태
-  const [mode, setMode] = useState<SoundMode>('wave');
+  const [soundMode, setSoundMode] = useState<SoundMode>('wave');
+  const [sessionMode, setSessionMode] = useState<SessionMode>('training');
   const [gameState, setGameState] = useState<GameState>('idle');
   const [activeSound, setActiveSound] = useState<'none' | 'A' | 'B'>('none');
   const [feedback, setFeedback] = useState<{
     message: string;
     isCorrect: boolean;
   } | null>(null);
+  const [isSessionActive, setIsSessionActive] = useState(false);
 
   // Staircase 상태 (UI 표시용)
   const [centsDifference, setCentsDifference] = useState(50);
@@ -75,18 +78,56 @@ export default function TrainingScreen() {
   }, []);
 
   /**
-   * 소리 재생 시퀀스 시작
-   * A(기준) 1.0s → 대기 0.5s → B(비교) 1.0s
+   * 세션 시작
+   */
+  const handleStartSession = useCallback(() => {
+    sessionManager.updateConfig({
+      mode: sessionMode,
+      soundMode,
+    });
+    sessionManager.startSession();
+    setIsSessionActive(true);
+    setFeedback(null);
+    setTotalTrials(0);
+    setCorrectCount(0);
+    setStreak(0);
+    setCentsDifference(sessionManager.getStaircaseState().centsDifference);
+  }, [sessionManager, sessionMode, soundMode]);
+
+  /**
+   * 세션 종료 + 결과 저장
+   */
+  const handleEndSession = useCallback(async () => {
+    const result = sessionManager.endSession();
+    setIsSessionActive(false);
+
+    // AsyncStorage에 저장
+    await TrainingStorage.saveSession(result);
+
+    const accuracy = Math.round(result.accuracy * 100);
+    Alert.alert(
+      '세션 완료',
+      `시행 ${result.totalTrials}회\n정답률 ${accuracy}%\n최소 격차 ${result.minCentsAchieved} Cents`,
+      [{ text: '확인' }],
+    );
+  }, [sessionManager]);
+
+  /**
+   * 소리 재생 시퀀스
    */
   const handlePlaySound = useCallback(() => {
     if (gameState === 'playing') return;
+
+    // 세션이 아직 시작 안 됐으면 자동 시작
+    if (!isSessionActive) {
+      handleStartSession();
+    }
 
     clearTimers();
     setGameState('playing');
     setFeedback(null);
 
-    // 새 라운드 준비 (B 방향 랜덤 결정)
-    const roundState = staircaseEngine.prepareRound();
+    const roundState = sessionManager.prepareRound();
     setCentsDifference(roundState.centsDifference);
 
     const baseFreq = roundState.baseFreq;
@@ -94,36 +135,42 @@ export default function TrainingScreen() {
     const duration = AUDIO.TONE_DURATION;
     const gap = AUDIO.GAP_DURATION;
 
-    // 소리 A 재생
+    // 소리 A
     setActiveSound('A');
-    audioEngine.playTone(baseFreq, 0, duration, mode);
+    audioEngine.playTone(baseFreq, 0, duration, soundMode);
 
-    // 소리 A 끝
-    addTimer(() => {
-      setActiveSound('none');
-    }, duration * 1000);
+    addTimer(() => setActiveSound('none'), duration * 1000);
 
-    // 소리 B 재생 (A 끝 + 0.5s 대기 후)
+    // 소리 B
     addTimer(() => {
       setActiveSound('B');
-      audioEngine.playTone(targetFreq, 0, duration, mode);
+      audioEngine.playTone(targetFreq, 0, duration, soundMode);
     }, (duration + gap) * 1000);
 
-    // 소리 B 끝 → 답변 대기
+    // 답변 대기
     addTimer(() => {
       setActiveSound('none');
       setGameState('waiting');
     }, (duration + gap + duration) * 1000);
-  }, [gameState, mode, audioEngine, staircaseEngine, clearTimers, addTimer]);
+  }, [
+    gameState,
+    isSessionActive,
+    soundMode,
+    audioEngine,
+    sessionManager,
+    clearTimers,
+    addTimer,
+    handleStartSession,
+  ]);
 
   /**
-   * 사용자 답변 처리
+   * 답변 처리
    */
   const handleAnswer = useCallback(
     (userThinksHigher: boolean) => {
-      if (gameState !== 'waiting' && gameState !== 'idle' && gameState !== 'answered') return;
+      if (gameState !== 'waiting' && gameState !== 'answered') return;
 
-      const result = staircaseEngine.submitAnswer(userThinksHigher);
+      const result = sessionManager.submitAnswer(userThinksHigher);
 
       setFeedback({
         message: result.message,
@@ -135,19 +182,23 @@ export default function TrainingScreen() {
       setCorrectCount(result.newState.correctCount);
       setGameState('answered');
     },
-    [gameState, staircaseEngine],
+    [gameState, sessionManager],
   );
 
   /**
-   * 모드 전환
+   * 모드 전환 (세션 비활성일 때만)
    */
-  const handleModeChange = useCallback((newMode: SoundMode) => {
-    setMode(newMode);
-    setFeedback(null);
-  }, []);
+  const handleSoundModeChange = useCallback(
+    (newMode: SoundMode) => {
+      if (isSessionActive) return;
+      setSoundMode(newMode);
+      setFeedback(null);
+    },
+    [isSessionActive],
+  );
 
-  // 정답률 계산
-  const accuracy = totalTrials > 0 ? Math.round((correctCount / totalTrials) * 100) : 0;
+  const accuracy =
+    totalTrials > 0 ? Math.round((correctCount / totalTrials) * 100) : 0;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -168,8 +219,48 @@ export default function TrainingScreen() {
           <View style={styles.headerSpacer} />
         </View>
 
-        {/* 모드 탭 */}
-        <ModeTab activeMode={mode} onModeChange={handleModeChange} />
+        {/* 세션 모드 선택 (§4.3 평가/훈련 이원화) */}
+        <View style={styles.sessionModeRow}>
+          <TouchableOpacity
+            style={[
+              styles.sessionModeBtn,
+              sessionMode === 'training' && styles.sessionModeBtnActive,
+              isSessionActive && styles.sessionModeBtnDisabled,
+            ]}
+            onPress={() => !isSessionActive && setSessionMode('training')}
+            activeOpacity={isSessionActive ? 1 : 0.7}
+          >
+            <Text
+              style={[
+                styles.sessionModeText,
+                sessionMode === 'training' && styles.sessionModeTextActive,
+              ]}
+            >
+              🏋️ 훈련
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.sessionModeBtn,
+              sessionMode === 'assessment' && styles.sessionModeBtnActive,
+              isSessionActive && styles.sessionModeBtnDisabled,
+            ]}
+            onPress={() => !isSessionActive && setSessionMode('assessment')}
+            activeOpacity={isSessionActive ? 1 : 0.7}
+          >
+            <Text
+              style={[
+                styles.sessionModeText,
+                sessionMode === 'assessment' && styles.sessionModeTextActive,
+              ]}
+            >
+              📋 평가
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 사운드 모드 탭 */}
+        <ModeTab activeMode={soundMode} onModeChange={handleSoundModeChange} />
 
         {/* 정보 뱃지 */}
         <View style={styles.infoRow}>
@@ -177,11 +268,11 @@ export default function TrainingScreen() {
             <Text style={styles.badgeText}>격차: {centsDifference} Cents</Text>
           </View>
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>🔥 연속 정답: {streak}회</Text>
+            <Text style={styles.badgeText}>🔥 연속: {streak}회</Text>
           </View>
         </View>
 
-        {/* 통계 바 */}
+        {/* 통계 */}
         {totalTrials > 0 && (
           <View style={styles.statsRow}>
             <Text style={styles.statsText}>
@@ -217,7 +308,7 @@ export default function TrainingScreen() {
           첫 번째 소리(A) 대비 두 번째 소리(B)의 높낮이는?
         </Text>
 
-        {/* 답변 버튼 */}
+        {/* 답변 */}
         <AnswerButtons
           disabled={gameState === 'playing' || gameState === 'idle'}
           onAnswer={handleAnswer}
@@ -229,6 +320,17 @@ export default function TrainingScreen() {
             message={feedback.message}
             isCorrect={feedback.isCorrect}
           />
+        )}
+
+        {/* 세션 종료 버튼 */}
+        {isSessionActive && totalTrials >= 3 && (
+          <TouchableOpacity
+            style={styles.endSessionButton}
+            onPress={handleEndSession}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.endSessionText}>세션 종료 및 저장</Text>
+          </TouchableOpacity>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -266,6 +368,35 @@ const styles = StyleSheet.create({
   },
   headerSpacer: {
     width: 50,
+  },
+  sessionModeRow: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    marginBottom: SPACING.md,
+  },
+  sessionModeBtn: {
+    flex: 1,
+    paddingVertical: SPACING.sm,
+    alignItems: 'center',
+    borderRadius: RADIUS.sm,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: 'transparent',
+  },
+  sessionModeBtnActive: {
+    backgroundColor: COLORS.surface,
+    borderColor: COLORS.primary,
+  },
+  sessionModeBtnDisabled: {
+    opacity: 0.5,
+  },
+  sessionModeText: {
+    color: COLORS.textMuted,
+    fontSize: FONT_SIZE.sm,
+    fontWeight: '600',
+  },
+  sessionModeTextActive: {
+    color: COLORS.primary,
   },
   infoRow: {
     flexDirection: 'row',
@@ -315,5 +446,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: SPACING.lg,
     fontWeight: '500',
+  },
+  endSessionButton: {
+    marginTop: SPACING.xl,
+    paddingVertical: SPACING.md,
+    borderRadius: RADIUS.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.error,
+    backgroundColor: COLORS.errorBg,
+  },
+  endSessionText: {
+    color: COLORS.error,
+    fontSize: FONT_SIZE.md,
+    fontWeight: '600',
   },
 });
