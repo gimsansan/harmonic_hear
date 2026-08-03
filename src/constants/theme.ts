@@ -26,6 +26,7 @@ export const COLORS = {
   error: '#FF5252',
 
   /** 주요 텍스트 */
+  text: '#FFFFFF',
   textPrimary: '#FFFFFF',
   /** 보조 텍스트 */
   textSecondary: '#D1D5F0',

@@ -25,7 +25,7 @@ import { TrainingStorage } from '../src/storage/TrainingStorage';
 import { COLORS, SPACING, FONT_SIZE, RADIUS, AUDIO } from '../src/constants/theme';
 
 import ModeTab from '../src/components/ModeTab';
-import WaveVisualizer from '../src/components/WaveVisualizer';
+import SkiaWaveVisualizer from '../src/components/SkiaWaveVisualizer';
 import AnswerButtons from '../src/components/AnswerButtons';
 import FeedbackCard from '../src/components/FeedbackCard';
 
@@ -282,7 +282,7 @@ export default function TrainingScreen() {
         )}
 
         {/* 시각화 */}
-        <WaveVisualizer activeSound={activeSound} />
+        <SkiaWaveVisualizer activeSound={activeSound} />
 
         {/* 재생 버튼 */}
         <TouchableOpacity
