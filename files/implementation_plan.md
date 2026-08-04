@@ -50,7 +50,7 @@
 #### [NEW] [src/training/StaircaseEngine.ts](file:///d:/hamornic_hear/src/training/StaircaseEngine.ts)
 - §6 적응형 난이도 로직
   - 연속 2회 정답 → 격차 10 cent 감소 (최소 10)
-  - 오답 → streak 리셋 + 격차 10 cent 증가 (최대 150)
+  - 오답 → streak 리셋 + 격차 10 cent 증가 (최대 300)
 - 상태: `centsDifference`, `streak`, `isHigher`, `totalTrials`, `correctCount`
 
 ### ✅ 검증

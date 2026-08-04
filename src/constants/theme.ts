@@ -84,9 +84,26 @@ export const FONT_SIZE = {
   hero: 32,
 } as const;
 
+/** 기준 음고 프리셋 키 (고역 프리셋 없음) */
+export type ReferencePitchPreset = 'standard' | 'mid' | 'low';
+
+/** 기준 음고 프리셋 — 표준 440 / 중역 330 / 저역 262 */
+export const REFERENCE_PRESETS: Record<
+  ReferencePitchPreset,
+  { label: string; hz: number }
+> = {
+  standard: { label: '표준 (A4)', hz: 440 },
+  mid: { label: '중역', hz: 330 },
+  low: { label: '저역', hz: 262 },
+} as const;
+
 export const AUDIO = {
-  /** 기준음 주파수 (A4) */
+  /** 기본 기준음 주파수 (A4) — 프리셋 standard와 동일 */
   BASE_FREQ: 440,
+  /** 재생 주파수 하한 (Hz) */
+  FREQ_MIN_HZ: 200,
+  /** 재생 주파수 상한 (Hz) */
+  FREQ_MAX_HZ: 2000,
   /** 소리 A 재생 시간 (초) */
   TONE_DURATION: 1.0,
   /** A→B 사이 대기 시간 (초) */
@@ -108,8 +125,8 @@ export const STAIRCASE = {
   INITIAL_CENTS: 50,
   /** 최소 cent 격차 */
   MIN_CENTS: 10,
-  /** 최대 cent 격차 */
-  MAX_CENTS: 150,
+  /** 최대 cent 격차 (문헌 프록시 잠정값 · 파일럿 검증 대상) */
+  MAX_CENTS: 300,
   /** 정답 시 감소량 */
   STEP_DOWN: 10,
   /** 오답 시 증가량 */

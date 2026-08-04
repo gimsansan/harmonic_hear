@@ -28,10 +28,12 @@ import {
   useDerivedValue,
   cancelAnimation,
 } from 'react-native-reanimated';
-import { COLORS, RADIUS, SPACING, FONT_SIZE } from '../constants/theme';
+import { AUDIO, COLORS, RADIUS, SPACING, FONT_SIZE } from '../constants/theme';
 
 interface SkiaWaveVisualizerProps {
   activeSound: 'none' | 'A' | 'B';
+  /** 소리 A(기준) 주파수 라벨 (Hz). 기본 AUDIO.BASE_FREQ */
+  baseFreq?: number;
 }
 
 const CANVAS_HEIGHT = 180;
@@ -44,6 +46,7 @@ const BASE_SCALES = [0.35, 0.55, 0.75, 1.0, 0.75, 0.55, 0.35];
 
 export default function SkiaWaveVisualizer({
   activeSound,
+  baseFreq = AUDIO.BASE_FREQ,
 }: SkiaWaveVisualizerProps) {
   const animProgress = useSharedValue(0);
 
@@ -168,7 +171,7 @@ export default function SkiaWaveVisualizer({
       {/* 주파수 표시 */}
       <View style={styles.freqRow}>
         <Text style={[styles.freqText, isActiveA && { color: COLORS.primary }]}>
-          440 Hz
+          {baseFreq} Hz
         </Text>
         <Text style={[styles.freqText, isActiveB && { color: COLORS.secondary }]}>
           ? Hz

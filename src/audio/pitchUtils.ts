@@ -5,6 +5,8 @@
  * 이 패턴(cent↔Hz 변환)은 오디오/음악 앱에서 **표준·매우 흔한** 패턴입니다.
  */
 
+import { AUDIO } from '../constants/theme';
+
 /**
  * 기준 주파수에서 cent만큼 이동한 주파수를 계산합니다.
  *
@@ -59,4 +61,27 @@ export function calcCoupledDuration(originalMs: number, detuneCents: number): nu
  */
 export function isAudibleFreq(hz: number): boolean {
   return hz >= 20 && hz <= 20000;
+}
+
+/**
+ * 재생 주파수를 앱 허용 대역으로 자릅니다.
+ *
+ * 기본 한도: AUDIO.FREQ_MIN_HZ ~ AUDIO.FREQ_MAX_HZ
+ *
+ * @example
+ * clampFreq(220) // → { clamped: 220, wasOverLimit: false }
+ * clampFreq(150) // → { clamped: 200, wasOverLimit: true }
+ */
+export function clampFreq(
+  hz: number,
+  minHz: number = AUDIO.FREQ_MIN_HZ,
+  maxHz: number = AUDIO.FREQ_MAX_HZ,
+): { clamped: number; wasOverLimit: boolean } {
+  if (hz < minHz) {
+    return { clamped: minHz, wasOverLimit: true };
+  }
+  if (hz > maxHz) {
+    return { clamped: maxHz, wasOverLimit: true };
+  }
+  return { clamped: hz, wasOverLimit: false };
 }

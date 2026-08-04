@@ -31,6 +31,10 @@ export interface SessionResult {
   mode: SessionMode;
   /** 사운드 모드 */
   soundMode: 'wave' | 'voice';
+  /** 기준 주파수 (Hz). 구버전 세션에는 없을 수 있음 */
+  baseFreq?: number;
+  /** 주파수 클램프 발생 횟수. 구버전 세션에는 없을 수 있음 */
+  clampCount?: number;
   /** 시작 시간 */
   startedAt: number;
   /** 종료 시간 */
@@ -142,6 +146,8 @@ export class SessionManager {
       id: `session_${this.startedAt}`,
       mode: this.config.mode,
       soundMode: this.config.soundMode,
+      baseFreq: this.config.baseFreq,
+      clampCount: this.staircaseEngine.getClampCount(),
       startedAt: this.startedAt,
       endedAt: Date.now(),
       totalTrials: state.totalTrials,

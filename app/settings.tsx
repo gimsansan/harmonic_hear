@@ -4,7 +4,7 @@
  * 기준 음고 설정, 저장소 데이터 초기화, 앱 정보 및 고지 문구 안내
  */
 
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -16,10 +16,38 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { TrainingStorage } from '../src/storage/TrainingStorage';
-import { COLORS, SPACING, FONT_SIZE, RADIUS } from '../src/constants/theme';
+import { AppSettingsStorage } from '../src/storage/AppSettingsStorage';
+import {
+  COLORS,
+  SPACING,
+  FONT_SIZE,
+  RADIUS,
+  REFERENCE_PRESETS,
+  type ReferencePitchPreset,
+} from '../src/constants/theme';
+
+const PRESET_ORDER: ReferencePitchPreset[] = ['standard', 'mid', 'low'];
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const [referencePreset, setReferencePreset] =
+    useState<ReferencePitchPreset>('standard');
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const stored = await AppSettingsStorage.getReferencePitchPreset();
+      if (!cancelled) setReferencePreset(stored);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleSelectPreset = useCallback(async (preset: ReferencePitchPreset) => {
+    setReferencePreset(preset);
+    await AppSettingsStorage.setReferencePitchPreset(preset);
+  }, []);
 
   const handleClearData = () => {
     Alert.alert(
@@ -59,15 +87,40 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionHeader}>오디오 설정</Text>
 
-          <View style={styles.settingItem}>
-            <View>
-              <Text style={styles.itemTitle}>기준 음고 (Reference Pitch)</Text>
-              <Text style={styles.itemSubtitle}>A4 = 440 Hz (표준 규격)</Text>
-            </View>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>440 Hz</Text>
-            </View>
-          </View>
+          <Text style={styles.itemTitle}>기준 음고 (Reference Pitch)</Text>
+          <Text style={styles.presetHint}>
+            훈련 기준음. 고역 프리셋은 제공하지 않습니다.
+          </Text>
+
+          {PRESET_ORDER.map((key) => {
+            const preset = REFERENCE_PRESETS[key];
+            const selected = referencePreset === key;
+            return (
+              <TouchableOpacity
+                key={key}
+                style={[styles.presetRow, selected && styles.presetRowSelected]}
+                onPress={() => handleSelectPreset(key)}
+                activeOpacity={0.7}
+              >
+                <View>
+                  <Text
+                    style={[
+                      styles.presetLabel,
+                      selected && styles.presetLabelSelected,
+                    ]}
+                  >
+                    {preset.label}
+                  </Text>
+                  <Text style={styles.itemSubtitle}>{preset.hz} Hz</Text>
+                </View>
+                {selected ? (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>선택됨</Text>
+                  </View>
+                ) : null}
+              </TouchableOpacity>
+            );
+          })}
 
           <View style={styles.settingItem}>
             <View>
@@ -159,11 +212,41 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
+  presetHint: {
+    color: COLORS.textMuted,
+    fontSize: FONT_SIZE.xs,
+    marginBottom: SPACING.sm,
+  },
+  presetRow: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.sm,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  presetRowSelected: {
+    borderColor: COLORS.primary,
+    backgroundColor: 'rgba(0, 229, 255, 0.08)',
+  },
+  presetLabel: {
+    color: COLORS.text,
+    fontSize: FONT_SIZE.md,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  presetLabelSelected: {
+    color: COLORS.primary,
+  },
   settingItem: {
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.md,
     padding: SPACING.md,
     marginBottom: SPACING.sm,
+    marginTop: SPACING.sm,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',

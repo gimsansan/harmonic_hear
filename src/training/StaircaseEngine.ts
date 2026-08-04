@@ -5,13 +5,14 @@
  * (연속 정답 시 하강, 오답 시 상승하는 전환형 계단법)
  *
  * 규칙:
- * - 기준음: A4 (440Hz)
+ * - 기준음: 생성 시 전달된 baseFreq (기본 A4 440Hz)
  * - 연속 2회 정답 → 격차 10 cent 감소 (최소 10 cent)
- * - 오답 → 연속 정답 수 리셋 + 격차 10 cent 증가 (최대 150 cent)
+ * - 오답 → 연속 정답 수 리셋 + 격차 10 cent 증가 (최대 300 cent)
+ * - targetFreq는 AUDIO 재생 한도로 클램프 (안전망)
  */
 
 import { STAIRCASE, AUDIO } from '../constants/theme';
-import { centsToFreq } from '../audio/pitchUtils';
+import { centsToFreq, clampFreq } from '../audio/pitchUtils';
 
 export interface StaircaseState {
   /** 현재 cent 격차 */
@@ -41,6 +42,8 @@ export interface TrialResult {
 
 export class StaircaseEngine {
   private state: StaircaseState;
+  /** 파일럿용: targetFreq 클램프 발생 횟수 */
+  private clampCount = 0;
 
   constructor(baseFreq: number = AUDIO.BASE_FREQ) {
     this.state = {
@@ -62,6 +65,13 @@ export class StaircaseEngine {
   }
 
   /**
+   * 세션 내 주파수 클램프 발생 횟수를 반환합니다.
+   */
+  getClampCount(): number {
+    return this.clampCount;
+  }
+
+  /**
    * 새 라운드를 준비합니다.
    * B 소리의 방향(높음/낮음)을 랜덤으로 결정하고 목표 주파수를 계산합니다.
    *
@@ -72,7 +82,16 @@ export class StaircaseEngine {
     const centsOffset = isHigher
       ? this.state.centsDifference
       : -this.state.centsDifference;
-    const targetFreq = centsToFreq(this.state.baseFreq, centsOffset);
+    const rawTarget = centsToFreq(this.state.baseFreq, centsOffset);
+    const { clamped: targetFreq, wasOverLimit } = clampFreq(rawTarget);
+    if (wasOverLimit) {
+      this.clampCount += 1;
+      if (__DEV__) {
+        console.log(
+          `[StaircaseEngine] freq clamped: ${rawTarget.toFixed(2)} → ${targetFreq}`,
+        );
+      }
+    }
 
     this.state = {
       ...this.state,
@@ -153,6 +172,7 @@ export class StaircaseEngine {
    * 상태를 초기화합니다.
    */
   reset(baseFreq: number = AUDIO.BASE_FREQ): void {
+    this.clampCount = 0;
     this.state = {
       centsDifference: STAIRCASE.INITIAL_CENTS,
       streak: 0,

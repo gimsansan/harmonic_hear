@@ -4,7 +4,7 @@
  * Phase 4: SessionManager 통합, 평가/훈련 이원화, 세션 저장
  *
  * 동작 순서 (§6):
- *   소리 A (기준, 440Hz) 1.0s → 대기 0.5s → 소리 B (비교) 1.0s → 답변 대기
+ *   소리 A (기준, 설정 프리셋 Hz) 1.0s → 대기 0.5s → 소리 B (비교) 1.0s → 답변 대기
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
@@ -17,12 +17,20 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 
 import { AudioEngine, SoundMode } from '../src/audio/AudioEngine';
 import { SessionManager, SessionMode } from '../src/training/SessionManager';
 import { TrainingStorage } from '../src/storage/TrainingStorage';
-import { COLORS, SPACING, FONT_SIZE, RADIUS, AUDIO } from '../src/constants/theme';
+import { AppSettingsStorage } from '../src/storage/AppSettingsStorage';
+import {
+  COLORS,
+  SPACING,
+  FONT_SIZE,
+  RADIUS,
+  AUDIO,
+  REFERENCE_PRESETS,
+} from '../src/constants/theme';
 
 import ModeTab from '../src/components/ModeTab';
 import SkiaWaveVisualizer from '../src/components/SkiaWaveVisualizer';
@@ -57,9 +65,11 @@ export default function TrainingScreen() {
   const [streak, setStreak] = useState(0);
   const [totalTrials, setTotalTrials] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
+  const [baseFreq, setBaseFreq] = useState<number>(AUDIO.BASE_FREQ);
 
   // 타이머 정리용
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const isSessionActiveRef = useRef(false);
 
   useEffect(() => {
     audioEngine.init();
@@ -68,6 +78,27 @@ export default function TrainingScreen() {
       timersRef.current.forEach(clearTimeout);
     };
   }, [audioEngine]);
+
+  useEffect(() => {
+    isSessionActiveRef.current = isSessionActive;
+  }, [isSessionActive]);
+
+  // 설정 화면에서 돌아온 뒤 프리셋 반영 (활성 세션 중에는 유지)
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      (async () => {
+        if (isSessionActiveRef.current) return;
+        const preset = await AppSettingsStorage.getReferencePitchPreset();
+        if (!cancelled) {
+          setBaseFreq(REFERENCE_PRESETS[preset].hz);
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, []),
+  );
 
   const clearTimers = useCallback(() => {
     timersRef.current.forEach(clearTimeout);
@@ -81,12 +112,17 @@ export default function TrainingScreen() {
   }, []);
 
   /**
-   * 세션 시작
+   * 세션 시작 — 저장된 기준음 프리셋을 반영
    */
-  const handleStartSession = useCallback(() => {
+  const handleStartSession = useCallback(async () => {
+    const preset = await AppSettingsStorage.getReferencePitchPreset();
+    const hz = REFERENCE_PRESETS[preset].hz;
+    setBaseFreq(hz);
+
     sessionManager.updateConfig({
       mode: sessionMode,
       soundMode,
+      baseFreq: hz,
     });
     sessionManager.startSession();
     setIsSessionActive(true);
@@ -121,9 +157,9 @@ export default function TrainingScreen() {
   const handlePlaySound = useCallback(async () => {
     if (gameState === 'playing') return;
 
-    // 세션이 아직 시작 안 됐으면 자동 시작
+    // 세션이 아직 시작 안 됐으면 자동 시작 (프리셋 → baseFreq)
     if (!isSessionActive) {
-      handleStartSession();
+      await handleStartSession();
     }
 
     // 사용자 제스처 시점에 suspended AudioContext를 깨움
@@ -139,15 +175,16 @@ export default function TrainingScreen() {
 
     const roundState = sessionManager.prepareRound();
     setCentsDifference(roundState.centsDifference);
+    setBaseFreq(roundState.baseFreq);
 
-    const baseFreq = roundState.baseFreq;
+    const roundBaseFreq = roundState.baseFreq;
     const targetFreq = roundState.targetFreq;
     const duration = AUDIO.TONE_DURATION;
     const gap = AUDIO.GAP_DURATION;
 
     // 소리 A
     setActiveSound('A');
-    void audioEngine.playTone(baseFreq, 0, duration, soundMode);
+    void audioEngine.playTone(roundBaseFreq, 0, duration, soundMode);
 
     addTimer(() => setActiveSound('none'), duration * 1000);
 
@@ -278,6 +315,9 @@ export default function TrainingScreen() {
             <Text style={styles.badgeText}>음정 차이: {centsDifference}</Text>
           </View>
           <View style={styles.badge}>
+            <Text style={styles.badgeText}>기준 {baseFreq} Hz</Text>
+          </View>
+          <View style={styles.badge}>
             <Text style={styles.badgeText}>🔥 연속: {streak}회</Text>
           </View>
         </View>
@@ -292,7 +332,7 @@ export default function TrainingScreen() {
         )}
 
         {/* 시각화 */}
-        <SkiaWaveVisualizer activeSound={activeSound} />
+        <SkiaWaveVisualizer activeSound={activeSound} baseFreq={baseFreq} />
 
         {/* 재생 버튼 */}
         <TouchableOpacity
@@ -430,11 +470,13 @@ const styles = StyleSheet.create({
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: SPACING.sm,
     marginBottom: SPACING.lg,
   },
   badge: {
     backgroundColor: COLORS.surface,
-    paddingHorizontal: SPACING.lg,
+    paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
     borderRadius: RADIUS.xxl,
     borderWidth: 1,

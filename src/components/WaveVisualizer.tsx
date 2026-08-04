@@ -7,13 +7,18 @@
 
 import React, { useRef, useEffect } from 'react';
 import { StyleSheet, View, Text, Animated, Easing } from 'react-native';
-import { COLORS, RADIUS, SPACING, FONT_SIZE } from '../constants/theme';
+import { AUDIO, COLORS, RADIUS, SPACING, FONT_SIZE } from '../constants/theme';
 
 interface WaveVisualizerProps {
   activeSound: 'none' | 'A' | 'B';
+  /** 소리 A(기준) 주파수 라벨 (Hz). 기본 AUDIO.BASE_FREQ */
+  baseFreq?: number;
 }
 
-export default function WaveVisualizer({ activeSound }: WaveVisualizerProps) {
+export default function WaveVisualizer({
+  activeSound,
+  baseFreq = AUDIO.BASE_FREQ,
+}: WaveVisualizerProps) {
   const waveAnimA = useRef(new Animated.Value(0)).current;
   const waveAnimB = useRef(new Animated.Value(0)).current;
   const animRefA = useRef<Animated.CompositeAnimation | null>(null);
@@ -100,7 +105,7 @@ export default function WaveVisualizer({ activeSound }: WaveVisualizerProps) {
             activeSound === 'A' && { color: COLORS.primary },
           ]}
         >
-          440 Hz
+          {baseFreq} Hz
         </Text>
       </View>
 
