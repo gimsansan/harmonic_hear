@@ -31,6 +31,9 @@ import FeedbackCard from '../src/components/FeedbackCard';
 
 type GameState = 'idle' | 'playing' | 'waiting' | 'answered';
 
+/** 세션 종료 버튼 노출에 필요한 최소 시행 수 */
+const MIN_TRIALS_TO_END = 3;
+
 export default function TrainingScreen() {
   const router = useRouter();
 
@@ -107,7 +110,7 @@ export default function TrainingScreen() {
     const accuracy = Math.round(result.accuracy * 100);
     Alert.alert(
       '세션 완료',
-      `시행 ${result.totalTrials}회\n정답률 ${accuracy}%\n최소 격차 ${result.minCentsAchieved} Cents`,
+      `시행 ${result.totalTrials}회\n정답률 ${accuracy}%\n최소 음정 차이 ${result.minCentsAchieved}`,
       [{ text: '확인' }],
     );
   }, [sessionManager]);
@@ -115,12 +118,19 @@ export default function TrainingScreen() {
   /**
    * 소리 재생 시퀀스
    */
-  const handlePlaySound = useCallback(() => {
+  const handlePlaySound = useCallback(async () => {
     if (gameState === 'playing') return;
 
     // 세션이 아직 시작 안 됐으면 자동 시작
     if (!isSessionActive) {
       handleStartSession();
+    }
+
+    // 사용자 제스처 시점에 suspended AudioContext를 깨움
+    const audioReady = await audioEngine.ensureRunning();
+    if (!audioReady) {
+      console.warn('[Training] AudioContext를 시작할 수 없습니다.');
+      return;
     }
 
     clearTimers();
@@ -137,14 +147,14 @@ export default function TrainingScreen() {
 
     // 소리 A
     setActiveSound('A');
-    audioEngine.playTone(baseFreq, 0, duration, soundMode);
+    void audioEngine.playTone(baseFreq, 0, duration, soundMode);
 
     addTimer(() => setActiveSound('none'), duration * 1000);
 
     // 소리 B
     addTimer(() => {
       setActiveSound('B');
-      audioEngine.playTone(targetFreq, 0, duration, soundMode);
+      void audioEngine.playTone(targetFreq, 0, duration, soundMode);
     }, (duration + gap) * 1000);
 
     // 답변 대기
@@ -265,7 +275,7 @@ export default function TrainingScreen() {
         {/* 정보 뱃지 */}
         <View style={styles.infoRow}>
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>격차: {centsDifference} Cents</Text>
+            <Text style={styles.badgeText}>음정 차이: {centsDifference}</Text>
           </View>
           <View style={styles.badge}>
             <Text style={styles.badgeText}>🔥 연속: {streak}회</Text>
@@ -322,15 +332,34 @@ export default function TrainingScreen() {
           />
         )}
 
-        {/* 세션 종료 버튼 */}
-        {isSessionActive && totalTrials >= 3 && (
-          <TouchableOpacity
-            style={styles.endSessionButton}
-            onPress={handleEndSession}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.endSessionText}>세션 종료 및 저장</Text>
-          </TouchableOpacity>
+        {/* 세션 종료: 3회 미만은 진행 표시, 이후 종료 버튼 */}
+        {isSessionActive && (
+          totalTrials >= MIN_TRIALS_TO_END ? (
+            <TouchableOpacity
+              style={styles.endSessionButton}
+              onPress={handleEndSession}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.endSessionText}>세션 종료 및 저장</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.endProgress}>
+              <View style={styles.endProgressTrack}>
+                {Array.from({ length: MIN_TRIALS_TO_END }).map((_, i) => (
+                  <View
+                    key={i}
+                    style={[
+                      styles.endProgressSegment,
+                      i < totalTrials && styles.endProgressSegmentFilled,
+                    ]}
+                  />
+                ))}
+              </View>
+              <Text style={styles.endProgressLabel}>
+                {totalTrials}/{MIN_TRIALS_TO_END}
+              </Text>
+            </View>
+          )
         )}
       </ScrollView>
     </SafeAreaView>
@@ -460,5 +489,30 @@ const styles = StyleSheet.create({
     color: COLORS.error,
     fontSize: FONT_SIZE.md,
     fontWeight: '600',
+  },
+  endProgress: {
+    marginTop: SPACING.xl,
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  endProgressTrack: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    width: '100%',
+  },
+  endProgressSegment: {
+    flex: 1,
+    height: 6,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.waveInactive,
+  },
+  endProgressSegmentFilled: {
+    backgroundColor: COLORS.primary,
+  },
+  endProgressLabel: {
+    color: COLORS.textMuted,
+    fontSize: FONT_SIZE.sm,
+    fontWeight: '600',
+    letterSpacing: 1,
   },
 });

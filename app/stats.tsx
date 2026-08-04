@@ -93,10 +93,10 @@ export default function StatsScreen() {
             <Text style={styles.cardEmoji}>🏆</Text>
             <Text style={styles.cardValue}>
               {stats?.bestMinCents !== null && stats?.bestMinCents !== undefined
-                ? `${stats.bestMinCents} cent`
+                ? `${stats.bestMinCents}`
                 : '-'}
             </Text>
-            <Text style={styles.cardLabel}>최고 인지 격차</Text>
+            <Text style={styles.cardLabel}>최소 음정 차이</Text>
           </View>
 
           <View style={styles.card}>
@@ -175,11 +175,11 @@ export default function StatsScreen() {
                     </Text>
                   </View>
                   <View style={styles.detailItem}>
-                    <Text style={styles.detailLabel}>최소 격차</Text>
+                    <Text style={styles.detailLabel}>최소 음정 차이</Text>
                     <Text
                       style={[styles.detailValue, { color: COLORS.secondary }]}
                     >
-                      {session.minCentsAchieved} cent
+                      {session.minCentsAchieved}
                     </Text>
                   </View>
                 </View>

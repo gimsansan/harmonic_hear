@@ -111,7 +111,7 @@ export class StaircaseEngine {
         newCents = this.state.centsDifference;
       }
 
-      message = `🎉 정답입니다! B 소리가 ${this.state.centsDifference} Cents 더 ${
+      message = `🎉 정답! B 소리가 음정차이 ${this.state.centsDifference}만큼 더 ${
         this.state.isHigher ? '높았습니다' : '낮았습니다'
       }.`;
 

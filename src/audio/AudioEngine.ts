@@ -47,6 +47,37 @@ export class AudioEngine {
   }
 
   /**
+   * suspended 상태면 resume합니다.
+   * 마운트 시 만든 AudioContext는 사용자 제스처 전에 suspended일 수 있습니다.
+   */
+  async ensureRunning(): Promise<boolean> {
+    if (!this.ctx) {
+      this.init();
+    }
+    if (!this.ctx) {
+      console.warn('[AudioEngine] AudioContext가 초기화되지 않았습니다.');
+      return false;
+    }
+
+    if (this.ctx.state === 'closed') {
+      console.warn('[AudioEngine] AudioContext가 이미 닫혔습니다.');
+      return false;
+    }
+
+    if (this.ctx.state !== 'running') {
+      try {
+        await this.ctx.resume();
+      } catch (error) {
+        console.warn('[AudioEngine] AudioContext resume 실패:', error);
+        return false;
+      }
+    }
+
+    // closed는 위에서 이미 걸렀고, resume 실패도 false로 반환함
+    return true;
+  }
+
+  /**
    * 지정된 주파수·모드로 톤을 재생합니다.
    *
    * @param freq - 재생할 주파수 (Hz)
@@ -54,14 +85,14 @@ export class AudioEngine {
    * @param duration - 재생 길이 (초)
    * @param mode - 'wave' (순수 파형) | 'voice' (포먼트 합성)
    */
-  playTone(
+  async playTone(
     freq: number,
     startTimeOffset: number,
     duration: number,
     mode: SoundMode,
-  ): void {
-    if (!this.ctx) {
-      console.warn('[AudioEngine] AudioContext가 초기화되지 않았습니다.');
+  ): Promise<void> {
+    const ready = await this.ensureRunning();
+    if (!ready || !this.ctx) {
       return;
     }
 
