@@ -12,11 +12,14 @@ import {
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
+  Switch,
   Alert,
 } from 'react-native';
+import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { TrainingStorage } from '../src/storage/TrainingStorage';
 import { AppSettingsStorage } from '../src/storage/AppSettingsStorage';
+import { setHapticsEnabled } from '../src/utils/haptics';
 import {
   COLORS,
   SPACING,
@@ -32,17 +35,34 @@ export default function SettingsScreen() {
   const router = useRouter();
   const [referencePreset, setReferencePreset] =
     useState<ReferencePitchPreset>('standard');
+  const [haptics, setHaptics] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const stored = await AppSettingsStorage.getReferencePitchPreset();
-      if (!cancelled) setReferencePreset(stored);
+      const hapticsOn = await AppSettingsStorage.getHapticsEnabled();
+      if (!cancelled) {
+        setReferencePreset(stored);
+        setHaptics(hapticsOn);
+        setHapticsEnabled(hapticsOn);
+      }
     })();
     return () => {
       cancelled = true;
     };
   }, []);
+
+  const handleToggleHaptics = useCallback(async (value: boolean) => {
+    setHaptics(value);
+    setHapticsEnabled(value);
+    await AppSettingsStorage.setHapticsEnabled(value);
+  }, []);
+
+  const handleReplayOnboarding = useCallback(async () => {
+    await AppSettingsStorage.setOnboardingDone(false);
+    router.push('/onboarding');
+  }, [router]);
 
   const handleSelectPreset = useCallback(async (preset: ReferencePitchPreset) => {
     setReferencePreset(preset);
@@ -75,6 +95,9 @@ export default function SettingsScreen() {
           onPress={() => router.back()}
           style={styles.backButton}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="뒤로 가기"
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
           <Text style={styles.backButtonText}>← 뒤로</Text>
         </TouchableOpacity>
@@ -122,14 +145,41 @@ export default function SettingsScreen() {
             );
           })}
 
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={handleReplayOnboarding}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="볼륨 맞추기 안내 다시 보기"
+          >
+            <View style={styles.flexBody}>
+              <Text style={styles.itemTitle}>볼륨 맞추기 안내 다시 보기</Text>
+              <Text style={styles.itemSubtitle}>
+                기준음을 들으며 편안한 크기로 맞춥니다
+              </Text>
+            </View>
+            <Text style={styles.chevron}>›</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 피드백 구역 */}
+        <View style={styles.section}>
+          <Text style={styles.sectionHeader}>피드백</Text>
+
           <View style={styles.settingItem}>
-            <View>
-              <Text style={styles.itemTitle}>기본 오디오 모드</Text>
-              <Text style={styles.itemSubtitle}>Sine Wave / Formant Synthesis</Text>
+            <View style={styles.flexBody}>
+              <Text style={styles.itemTitle}>진동 피드백</Text>
+              <Text style={styles.itemSubtitle}>
+                정답·오답을 진동으로도 알려 줍니다
+              </Text>
             </View>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>WebAudio DSP</Text>
-            </View>
+            <Switch
+              value={haptics}
+              onValueChange={handleToggleHaptics}
+              trackColor={{ false: COLORS.border, true: COLORS.primary }}
+              thumbColor={COLORS.text}
+              accessibilityLabel="진동 피드백"
+            />
           </View>
         </View>
 
@@ -152,7 +202,9 @@ export default function SettingsScreen() {
 
           <View style={styles.infoCard}>
             <Text style={styles.appName}>HarmoniTune (하모니튠)</Text>
-            <Text style={styles.appVersion}>버전 1.0.0 (Phase 6)</Text>
+            <Text style={styles.appVersion}>
+              버전 {Constants.expoConfig?.version ?? '1.0.0'}
+            </Text>
 
             <View style={styles.divider} />
 
@@ -252,6 +304,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: COLORS.border,
+  },
+  flexBody: { flex: 1, paddingRight: SPACING.md },
+  chevron: {
+    color: COLORS.textMuted,
+    fontSize: FONT_SIZE.xxl,
   },
   itemTitle: {
     color: COLORS.text,

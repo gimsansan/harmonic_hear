@@ -78,7 +78,48 @@ export class AudioEngine {
   }
 
   /**
-   * 지정된 주파수·모드로 톤을 재생합니다.
+   * 여러 톤을 **하나의 오디오 클럭 기준점**에 맞춰 한 번에 예약합니다.
+   *
+   * 톤마다 `playTone`을 따로 부르면 호출 시점의 `currentTime`이 각각 달라지고,
+   * 그 사이에 낀 JS 타이머·마이크로태스크 지연이 자극 간 간격(ISI)에 섞입니다.
+   * Android에서 JS 스레드가 바쁘면 수십 ms까지 흔들릴 수 있고,
+   * 흔들린 간격은 음고 대신 **시간 단서**로 작동할 수 있습니다.
+   *
+   * 간격의 정확도가 중요한 자극 제시에는 반드시 이 메서드를 쓰십시오.
+   *
+   * @param tones - `offset`은 시퀀스 시작점 기준 상대 시각 (초)
+   * @param mode - 'wave' (순수 파형) | 'voice' (포먼트 합성)
+   * @returns 예약에 성공했는지
+   */
+  async playSequence(
+    tones: readonly { freq: number; offset: number; duration: number }[],
+    mode: SoundMode,
+  ): Promise<boolean> {
+    const ready = await this.ensureRunning();
+    if (!ready || !this.ctx) {
+      return false;
+    }
+
+    const ctx = this.ctx;
+    // 기준점을 한 번만 읽는다 — 이 값이 시퀀스 전체의 시간 원점이 된다
+    const base = ctx.currentTime;
+
+    for (const tone of tones) {
+      const startTime = base + tone.offset;
+      if (mode === 'wave') {
+        this.playSineTone(ctx, tone.freq, startTime, tone.duration);
+      } else {
+        this.playVoiceTone(ctx, tone.freq, startTime, tone.duration);
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * 지정된 주파수·모드로 톤 하나를 재생합니다.
+   *
+   * 여러 톤의 **간격**이 중요하면 `playSequence`를 쓰십시오.
    *
    * @param freq - 재생할 주파수 (Hz)
    * @param startTimeOffset - 현재 시점 기준 오프셋 (초)
@@ -91,26 +132,32 @@ export class AudioEngine {
     duration: number,
     mode: SoundMode,
   ): Promise<void> {
-    const ready = await this.ensureRunning();
-    if (!ready || !this.ctx) {
-      return;
-    }
+    await this.playSequence([{ freq, offset: startTimeOffset, duration }], mode);
+  }
 
-    const ctx = this.ctx;
-    const now = ctx.currentTime + startTimeOffset;
+  /**
+   * Attack → Sustain → Release 엔벨로프의 구간 경계를 계산합니다.
+   *
+   * `releaseStart` 앵커가 없으면 Attack 종료 시점부터 Release 목표 시점까지
+   * 램프가 이어져 톤 전체가 감쇠합니다. 서스테인 구간을 보장하기 위한 계산입니다.
+   */
+  private envelopeTimes(
+    startTime: number,
+    duration: number,
+  ): { attackEnd: number; releaseStart: number; end: number } {
+    const end = startTime + duration;
+    const attackEnd = Math.min(startTime + AUDIO.ATTACK_TIME, end);
+    // duration이 Attack+Release보다 짧아도 순서가 뒤집히지 않도록 보정
+    const releaseStart = Math.max(attackEnd, end - AUDIO.RELEASE_TIME);
 
-    if (mode === 'wave') {
-      this.playSineTone(ctx, freq, now, duration);
-    } else {
-      this.playVoiceTone(ctx, freq, now, duration);
-    }
+    return { attackEnd, releaseStart, end };
   }
 
   /**
    * 순수 Sine 파형 톤 (§4.1)
    *
    * 오디오 그래프: OscillatorNode('sine') → GainNode → destination
-   * Envelope: exponentialRamp으로 Attack/Release 처리 (클릭/팝 방지)
+   * Envelope: Attack → Sustain → Release (클릭/팝 방지 + 지속 길이 보장)
    */
   private playSineTone(
     ctx: AudioContext,
@@ -124,19 +171,25 @@ export class AudioEngine {
     osc.type = 'sine';
     osc.frequency.setValueAtTime(freq, startTime);
 
-    // Envelope: 부드러운 Attack/Release (클릭/팝 방지)
-    gain.gain.setValueAtTime(0.001, startTime);
-    gain.gain.exponentialRampToValueAtTime(0.4, startTime + AUDIO.ATTACK_TIME);
-    gain.gain.exponentialRampToValueAtTime(
-      0.001,
-      startTime + duration - AUDIO.RELEASE_TIME,
+    const { attackEnd, releaseStart, end } = this.envelopeTimes(
+      startTime,
+      duration,
     );
+    const peak = AUDIO.PEAK_GAIN_WAVE;
+
+    // Attack
+    gain.gain.setValueAtTime(0.001, startTime);
+    gain.gain.exponentialRampToValueAtTime(peak, attackEnd);
+    // Sustain — Release 시작점을 앵커로 고정해야 이 구간이 평탄하게 유지됨
+    gain.gain.setValueAtTime(peak, releaseStart);
+    // Release
+    gain.gain.exponentialRampToValueAtTime(0.001, end);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
 
     osc.start(startTime);
-    osc.stop(startTime + duration);
+    osc.stop(end);
   }
 
   /**
@@ -173,13 +226,16 @@ export class AudioEngine {
     filter2.frequency.setValueAtTime(AUDIO.FORMANT_F2, startTime);
     filter2.Q.setValueAtTime(AUDIO.FORMANT_Q, startTime);
 
-    // Envelope: linearRamp으로 Attack/Release
+    const { releaseStart, end } = this.envelopeTimes(startTime, duration);
+    const peak = AUDIO.PEAK_GAIN_VOICE;
+    // voice 모드는 sine보다 완만한 Attack(0.1s) 사용
+    const attackEnd = Math.min(startTime + 0.1, releaseStart);
+
+    // Envelope: Attack → Sustain → Release (linearRamp)
     gain.gain.setValueAtTime(0.001, startTime);
-    gain.gain.linearRampToValueAtTime(0.3, startTime + 0.1);
-    gain.gain.linearRampToValueAtTime(
-      0.001,
-      startTime + duration - AUDIO.RELEASE_TIME,
-    );
+    gain.gain.linearRampToValueAtTime(peak, attackEnd);
+    gain.gain.setValueAtTime(peak, releaseStart);
+    gain.gain.linearRampToValueAtTime(0.001, end);
 
     // 오디오 그래프 연결
     osc.connect(filter1);
@@ -189,6 +245,6 @@ export class AudioEngine {
     gain.connect(ctx.destination);
 
     osc.start(startTime);
-    osc.stop(startTime + duration);
+    osc.stop(end);
   }
 }

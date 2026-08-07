@@ -5,7 +5,7 @@
  * 오답: 빨강 테두리 + 반투명 배경
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Animated, Text } from 'react-native';
 import { COLORS, RADIUS, SPACING, FONT_SIZE } from '../constants/theme';
 
@@ -14,9 +14,13 @@ interface FeedbackCardProps {
   isCorrect: boolean;
 }
 
-export default function FeedbackCard({ message, isCorrect }: FeedbackCardProps) {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(20)).current;
+export default function FeedbackCard({
+  message,
+  isCorrect,
+}: Readonly<FeedbackCardProps>) {
+  // 지연 초기화 — 매 렌더마다 Animated.Value를 새로 만들지 않는다
+  const [fadeAnim] = useState(() => new Animated.Value(0));
+  const [slideAnim] = useState(() => new Animated.Value(20));
 
   useEffect(() => {
     // 등장 애니메이션: fade-in + slide-up

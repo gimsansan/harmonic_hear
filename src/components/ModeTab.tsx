@@ -6,7 +6,13 @@
 
 import React from 'react';
 import { StyleSheet, View, TouchableOpacity, Text } from 'react-native';
-import { COLORS, RADIUS, SPACING, FONT_SIZE } from '../constants/theme';
+import {
+  COLORS,
+  RADIUS,
+  SPACING,
+  FONT_SIZE,
+  MIN_TOUCH_TARGET,
+} from '../constants/theme';
 import type { SoundMode } from '../audio/AudioEngine';
 
 interface ModeTabProps {
@@ -16,11 +22,14 @@ interface ModeTabProps {
 
 export default function ModeTab({ activeMode, onModeChange }: ModeTabProps) {
   return (
-    <View style={styles.container}>
+    <View style={styles.container} accessibilityRole="tablist">
       <TouchableOpacity
         style={[styles.tab, activeMode === 'wave' && styles.activeTab]}
         onPress={() => onModeChange('wave')}
         activeOpacity={0.7}
+        accessibilityRole="tab"
+        accessibilityLabel="순수 파형 모드"
+        accessibilityState={{ selected: activeMode === 'wave' }}
       >
         <Text
           style={[styles.tabText, activeMode === 'wave' && styles.activeTabText]}
@@ -33,6 +42,9 @@ export default function ModeTab({ activeMode, onModeChange }: ModeTabProps) {
         style={[styles.tab, activeMode === 'voice' && styles.activeTab]}
         onPress={() => onModeChange('voice')}
         activeOpacity={0.7}
+        accessibilityRole="tab"
+        accessibilityLabel="사람 목소리 모드"
+        accessibilityState={{ selected: activeMode === 'voice' }}
       >
         <Text
           style={[
@@ -40,7 +52,7 @@ export default function ModeTab({ activeMode, onModeChange }: ModeTabProps) {
             activeMode === 'voice' && styles.activeTabText,
           ]}
         >
-          🎤 사람 목소리("아~")
+          🎤 사람 목소리(&ldquo;아~&rdquo;)
         </Text>
       </TouchableOpacity>
     </View>
@@ -58,6 +70,8 @@ const styles = StyleSheet.create({
   tab: {
     flex: 1,
     paddingVertical: SPACING.md,
+    minHeight: MIN_TOUCH_TARGET,
+    justifyContent: 'center',
     alignItems: 'center',
     borderRadius: RADIUS.sm,
   },

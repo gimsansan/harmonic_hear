@@ -17,12 +17,25 @@ import {
 import { useRouter, useFocusEffect } from 'expo-router';
 import { TrainingStorage } from '../src/storage/TrainingStorage';
 import type { SessionResult } from '../src/training/SessionManager';
-import { COLORS, SPACING, FONT_SIZE, RADIUS } from '../src/constants/theme';
+import ThresholdChart from '../src/components/ThresholdChart';
+import {
+  COLORS,
+  SPACING,
+  FONT_SIZE,
+  RADIUS,
+  MIN_TOUCH_TARGET,
+} from '../src/constants/theme';
+
+// 헤더 뒤로가기 버튼의 최소 터치 영역
+const BACK_HIT_SLOP = { top: 12, bottom: 12, left: 12, right: 12 };
 
 interface StorageStats {
   totalSessions: number;
   totalTrials: number;
   overallAccuracy: number;
+  sessionsWithThreshold: number;
+  bestThresholdCents: number | null;
+  latestThresholdCents: number | null;
   bestMinCents: number | null;
   averageReactionMs: number | null;
 }
@@ -70,6 +83,9 @@ export default function StatsScreen() {
           onPress={() => router.back()}
           style={styles.backButton}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="뒤로 가기"
+          hitSlop={BACK_HIT_SLOP}
         >
           <Text style={styles.backButtonText}>← 뒤로</Text>
         </TouchableOpacity>
@@ -91,12 +107,22 @@ export default function StatsScreen() {
         <View style={styles.grid}>
           <View style={styles.card}>
             <Text style={styles.cardEmoji}>🏆</Text>
-            <Text style={styles.cardValue}>
-              {stats?.bestMinCents !== null && stats?.bestMinCents !== undefined
-                ? `${stats.bestMinCents}`
+            <Text style={[styles.cardValue, { color: COLORS.primary }]}>
+              {stats?.bestThresholdCents != null
+                ? `${stats.bestThresholdCents}`
                 : '-'}
             </Text>
-            <Text style={styles.cardLabel}>최소 음정 차이</Text>
+            <Text style={styles.cardLabel}>변별 역치 (최고)</Text>
+          </View>
+
+          <View style={styles.card}>
+            <Text style={styles.cardEmoji}>📈</Text>
+            <Text style={styles.cardValue}>
+              {stats?.latestThresholdCents != null
+                ? `${stats.latestThresholdCents}`
+                : '-'}
+            </Text>
+            <Text style={styles.cardLabel}>최근 역치</Text>
           </View>
 
           <View style={styles.card}>
@@ -116,15 +142,32 @@ export default function StatsScreen() {
             </Text>
             <Text style={styles.cardLabel}>평균 반응 시간</Text>
           </View>
-
-          <View style={styles.card}>
-            <Text style={styles.cardEmoji}>🔥</Text>
-            <Text style={styles.cardValue}>
-              {stats ? `${stats.totalSessions}회 / ${stats.totalTrials}시행` : '-'}
-            </Text>
-            <Text style={styles.cardLabel}>총 훈련 세션</Text>
-          </View>
         </View>
+
+        {/* 역치 안내 + 누적 요약 */}
+        <View style={styles.summaryBox}>
+          <Text style={styles.summaryHint}>
+            변별 역치는 구별할 수 있는 가장 작은 음정 차이입니다.{'\n'}
+            <Text style={{ color: COLORS.primary }}>숫자가 작을수록 정밀</Text>
+            하게 듣고 있다는 뜻입니다.
+          </Text>
+          <Text style={styles.summaryLine}>
+            총 {stats?.totalSessions ?? 0}세션 · {stats?.totalTrials ?? 0}시행
+            {stats && stats.totalSessions > stats.sessionsWithThreshold
+              ? ` · 역치 산출 ${stats.sessionsWithThreshold}세션`
+              : ''}
+          </Text>
+        </View>
+
+        {/* 역치 추이 그래프 (P2-3) */}
+        {recentSessions.length > 0 && (
+          <ThresholdChart
+            values={[...recentSessions]
+              .reverse() // 목록은 최근순이므로 그래프용으로 시간순 복원
+              .map((s) => s.thresholdCents)
+              .filter((v): v is number => typeof v === 'number')}
+          />
+        )}
 
         {/* 최근 세션 기록 */}
         <Text style={styles.sectionTitle}>최근 훈련 세션 (최대 10개)</Text>
@@ -134,7 +177,7 @@ export default function StatsScreen() {
             <Text style={styles.emptyEmoji}>📊</Text>
             <Text style={styles.emptyTitle}>저장된 훈련 기록이 없습니다</Text>
             <Text style={styles.emptyDesc}>
-              '음고 감각 적응 훈련'을 진행한 후 세션을 저장해보세요.
+              &lsquo;음고 감각 적응 훈련&rsquo;을 진행한 후 세션을 저장해보세요.
             </Text>
             <TouchableOpacity
               style={styles.startButton}
@@ -175,11 +218,13 @@ export default function StatsScreen() {
                     </Text>
                   </View>
                   <View style={styles.detailItem}>
-                    <Text style={styles.detailLabel}>최소 음정 차이</Text>
+                    <Text style={styles.detailLabel}>변별 역치</Text>
                     <Text
                       style={[styles.detailValue, { color: COLORS.secondary }]}
                     >
-                      {session.minCentsAchieved}
+                      {session.thresholdCents != null
+                        ? session.thresholdCents
+                        : '-'}
                     </Text>
                   </View>
                 </View>
@@ -209,6 +254,8 @@ const styles = StyleSheet.create({
   backButton: {
     paddingVertical: SPACING.xs,
     paddingRight: SPACING.md,
+    minHeight: MIN_TOUCH_TARGET,
+    justifyContent: 'center',
   },
   backButtonText: {
     color: COLORS.primary,
@@ -252,6 +299,25 @@ const styles = StyleSheet.create({
   cardLabel: {
     color: COLORS.textMuted,
     fontSize: FONT_SIZE.xs,
+  },
+  summaryBox: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.xl,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  summaryHint: {
+    color: COLORS.textMuted,
+    fontSize: FONT_SIZE.xs,
+    lineHeight: 18,
+    marginBottom: SPACING.sm,
+  },
+  summaryLine: {
+    color: COLORS.textSecondary,
+    fontSize: FONT_SIZE.sm,
+    fontWeight: '600',
   },
   sectionTitle: {
     color: COLORS.text,

@@ -6,7 +6,13 @@
 
 import React from 'react';
 import { StyleSheet, View, TouchableOpacity, Text } from 'react-native';
-import { COLORS, RADIUS, SPACING, FONT_SIZE } from '../constants/theme';
+import {
+  COLORS,
+  RADIUS,
+  SPACING,
+  FONT_SIZE,
+  MIN_TOUCH_TARGET,
+} from '../constants/theme';
 
 interface AnswerButtonsProps {
   disabled: boolean;
@@ -21,8 +27,14 @@ export default function AnswerButtons({ disabled, onAnswer }: AnswerButtonsProps
         onPress={() => onAnswer(true)}
         disabled={disabled}
         activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel="두 번째 소리가 더 높음"
+        accessibilityHint="첫 번째 소리보다 두 번째 소리가 높다고 답합니다"
+        accessibilityState={{ disabled }}
       >
-        <Text style={styles.icon}>⬆️</Text>
+        <Text style={styles.icon} accessibilityElementsHidden>
+          ⬆️
+        </Text>
         <Text style={[styles.text, disabled && styles.disabledText]}>
           B가 더 높음
         </Text>
@@ -33,8 +45,14 @@ export default function AnswerButtons({ disabled, onAnswer }: AnswerButtonsProps
         onPress={() => onAnswer(false)}
         disabled={disabled}
         activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel="두 번째 소리가 더 낮음"
+        accessibilityHint="첫 번째 소리보다 두 번째 소리가 낮다고 답합니다"
+        accessibilityState={{ disabled }}
       >
-        <Text style={styles.icon}>⬇️</Text>
+        <Text style={styles.icon} accessibilityElementsHidden>
+          ⬇️
+        </Text>
         <Text style={[styles.text, disabled && styles.disabledText]}>
           B가 더 낮음
         </Text>
@@ -52,6 +70,8 @@ const styles = StyleSheet.create({
   button: {
     flex: 1,
     paddingVertical: 18,
+    minHeight: MIN_TOUCH_TARGET,
+    justifyContent: 'center',
     borderRadius: RADIUS.lg,
     alignItems: 'center',
     borderWidth: 1,

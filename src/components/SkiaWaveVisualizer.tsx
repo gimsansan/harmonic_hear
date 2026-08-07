@@ -1,17 +1,15 @@
 /**
- * Skia GPU 가속 파형 시각화 (Phase 5)
+ * Skia GPU 가속 파형 시각화
  *
- * @shopify/react-native-skia 기반 실시간 파형 렌더링.
- * Animated API 기반 WaveVisualizer를 대체합니다.
- *
- * 특징:
- * - GPU 가속 렌더링 (목표 60fps)
- * - 부드러운 그라디언트 파형 바
- * - 소리 A(시안) / B(오렌지) 개별 애니메이션
+ * 3·4단계 수정 사항:
+ * - P3-4 A/B가 같은 애니메이션 값을 공유해 함께 움직이던 문제 → 개별 구동
+ * - P3-5 캔버스 폭이 244px로 고정돼 넓은 화면에서 좁게 보이던 문제 → 반응형
+ * - P5-1 `useDerivedValue`를 `.map()` 안에서 호출하던 훅 규칙 위반 → WaveBar로 추출
+ * - P3-6 B 주파수가 답변 후에도 `? Hz`였던 문제 → 정답 공개 시 실제 값 표시
  */
 
 import React, { useEffect } from 'react';
-import { StyleSheet, View, Text } from 'react-native';
+import { StyleSheet, View, Text, useWindowDimensions } from 'react-native';
 import {
   Canvas,
   RoundedRect,
@@ -27,33 +25,82 @@ import {
   Easing,
   useDerivedValue,
   cancelAnimation,
+  type SharedValue,
 } from 'react-native-reanimated';
 import { AUDIO, COLORS, RADIUS, SPACING, FONT_SIZE } from '../constants/theme';
 
 interface SkiaWaveVisualizerProps {
   activeSound: 'none' | 'A' | 'B';
-  /** 소리 A(기준) 주파수 라벨 (Hz). 기본 AUDIO.BASE_FREQ */
+  /** 소리 A(기준) 주파수 라벨 (Hz) */
   baseFreq?: number;
+  /** 소리 B(비교) 주파수. 정답 공개 전에는 넘기지 않는다 */
+  targetFreq?: number | null;
 }
 
-const CANVAS_HEIGHT = 180;
+const CANVAS_HEIGHT = 110;
 const BAR_COUNT = 7;
 const BAR_WIDTH = 8;
 const BAR_GAP = 6;
-const MAX_BAR_HEIGHT = 90;
+const MAX_BAR_HEIGHT = 78;
 const MIN_BAR_HEIGHT = 12;
 const BASE_SCALES = [0.35, 0.55, 0.75, 1.0, 0.75, 0.55, 0.35];
+
+const GROUP_WIDTH = BAR_COUNT * BAR_WIDTH + (BAR_COUNT - 1) * BAR_GAP;
+
+/**
+ * 막대 하나.
+ *
+ * 훅을 컴포넌트 최상위에서만 호출하기 위해 분리했습니다.
+ * `.map()` 콜백 안에서 훅을 부르면 배열 길이가 바뀌는 순간 깨집니다.
+ */
+function WaveBar({
+  x,
+  centerY,
+  baseScale,
+  progress,
+  colors,
+}: {
+  x: number;
+  centerY: number;
+  baseScale: number;
+  progress: SharedValue<number>;
+  colors: string[];
+}) {
+  const height = useDerivedValue(() => {
+    const active = MIN_BAR_HEIGHT + (MAX_BAR_HEIGHT - MIN_BAR_HEIGHT) * baseScale;
+    return MIN_BAR_HEIGHT + (active - MIN_BAR_HEIGHT) * progress.value;
+  }, [progress]);
+
+  const y = useDerivedValue(() => centerY - height.value / 2, [height]);
+
+  return (
+    <RoundedRect x={x} y={y} width={BAR_WIDTH} height={height} r={BAR_WIDTH / 2}>
+      <LinearGradient
+        start={vec(x, 0)}
+        end={vec(x, CANVAS_HEIGHT)}
+        colors={colors}
+      />
+    </RoundedRect>
+  );
+}
 
 export default function SkiaWaveVisualizer({
   activeSound,
   baseFreq = AUDIO.BASE_FREQ,
-}: SkiaWaveVisualizerProps) {
-  const animProgress = useSharedValue(0);
+  targetFreq = null,
+}: Readonly<SkiaWaveVisualizerProps>) {
+  const { width: screenWidth } = useWindowDimensions();
+  // 훈련 화면의 좌우 여백(SPACING.xl)을 뺀 폭에 맞춘다
+  const canvasWidth = Math.max(GROUP_WIDTH * 2 + 60, screenWidth - SPACING.xl * 2);
+
+  // A와 B를 각각 구동한다 — 하나를 공유하면 반대쪽 막대도 같이 움직인다
+  const progressA = useSharedValue(0);
+  const progressB = useSharedValue(0);
 
   useEffect(() => {
-    if (activeSound === 'A' || activeSound === 'B') {
-      animProgress.value = 0;
-      animProgress.value = withRepeat(
+    const pulse = (value: SharedValue<number>) => {
+      value.value = 0;
+      value.value = withRepeat(
         withSequence(
           withTiming(1, { duration: 300, easing: Easing.bezier(0.4, 0, 0.2, 1) }),
           withTiming(0, { duration: 300, easing: Easing.bezier(0.4, 0, 0.2, 1) }),
@@ -61,43 +108,45 @@ export default function SkiaWaveVisualizer({
         4,
         false,
       );
-    } else {
-      cancelAnimation(animProgress);
-      animProgress.value = withTiming(0, { duration: 200 });
-    }
-  }, [activeSound, animProgress]);
+    };
+    const settle = (value: SharedValue<number>) => {
+      cancelAnimation(value);
+      value.value = withTiming(0, { duration: 200 });
+    };
 
-  // 각 바의 높이 계산 (derived values)
-  const barHeights = BASE_SCALES.map((baseScale, i) =>
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    useDerivedValue(() => {
-      const activeHeight = MIN_BAR_HEIGHT + (MAX_BAR_HEIGHT - MIN_BAR_HEIGHT) * baseScale;
-      const idleHeight = MIN_BAR_HEIGHT;
-      return idleHeight + (activeHeight - idleHeight) * animProgress.value;
-    }, [animProgress]),
-  );
+    if (activeSound === 'A') {
+      pulse(progressA);
+      settle(progressB);
+    } else if (activeSound === 'B') {
+      settle(progressA);
+      pulse(progressB);
+    } else {
+      settle(progressA);
+      settle(progressB);
+    }
+  }, [activeSound, progressA, progressB]);
 
   const isActiveA = activeSound === 'A';
   const isActiveB = activeSound === 'B';
 
   const colorsA = isActiveA
-    ? ['#00E5FF', '#0091EA']
+    ? [COLORS.primary, '#0091EA']
     : [COLORS.waveInactive, '#252840'];
   const colorsB = isActiveB
-    ? ['#FF6D00', '#FF3D00']
+    ? [COLORS.secondary, '#FF3D00']
     : [COLORS.waveInactive, '#252840'];
 
-  // 바 그룹의 총 너비
-  const groupWidth = BAR_COUNT * BAR_WIDTH + (BAR_COUNT - 1) * BAR_GAP;
-  const canvasWidth = groupWidth * 2 + 60; // 양쪽 그룹 + 간격
-
-  const leftGroupX = (canvasWidth / 2 - groupWidth) / 2;
-  const rightGroupX = canvasWidth / 2 + (canvasWidth / 2 - groupWidth) / 2;
+  const leftGroupX = (canvasWidth / 2 - GROUP_WIDTH) / 2;
+  const rightGroupX = canvasWidth / 2 + (canvasWidth / 2 - GROUP_WIDTH) / 2;
   const centerY = CANVAS_HEIGHT / 2;
 
+  const centsLabel =
+    targetFreq != null
+      ? `${Math.round(targetFreq)} Hz`
+      : '? Hz';
+
   return (
-    <View style={styles.canvas}>
-      {/* 라벨 */}
+    <View style={styles.wrapper}>
       <View style={styles.labelsRow}>
         <View style={styles.labelBox}>
           <Text style={[styles.label, isActiveA && { color: COLORS.primary }]}>
@@ -111,70 +160,40 @@ export default function SkiaWaveVisualizer({
         </View>
       </View>
 
-      {/* Skia Canvas */}
-      <Canvas style={{ width: canvasWidth, height: CANVAS_HEIGHT - 50, alignSelf: 'center' }}>
-        {/* 소리 A 바 그룹 */}
+      <Canvas style={{ width: canvasWidth, height: CANVAS_HEIGHT }}>
         <Group>
-          {BASE_SCALES.map((_, i) => {
-            const x = leftGroupX + i * (BAR_WIDTH + BAR_GAP);
-            const barH = barHeights[i];
-            const y = useDerivedValue(() => centerY - 25 - barH.value / 2, [barH]);
-
-            return (
-              <Group key={`a-${i}`}>
-                <RoundedRect
-                  x={x}
-                  y={y}
-                  width={BAR_WIDTH}
-                  height={barH}
-                  r={BAR_WIDTH / 2}
-                >
-                  <LinearGradient
-                    start={vec(x, 0)}
-                    end={vec(x, CANVAS_HEIGHT)}
-                    colors={colorsA}
-                  />
-                </RoundedRect>
-              </Group>
-            );
-          })}
+          {BASE_SCALES.map((scale, i) => (
+            <WaveBar
+              key={`a-${i}`}
+              x={leftGroupX + i * (BAR_WIDTH + BAR_GAP)}
+              centerY={centerY}
+              baseScale={scale}
+              progress={progressA}
+              colors={colorsA}
+            />
+          ))}
         </Group>
 
-        {/* 소리 B 바 그룹 */}
         <Group>
-          {BASE_SCALES.map((_, i) => {
-            const x = rightGroupX + i * (BAR_WIDTH + BAR_GAP);
-            const barH = barHeights[i];
-            const y = useDerivedValue(() => centerY - 25 - barH.value / 2, [barH]);
-
-            return (
-              <Group key={`b-${i}`}>
-                <RoundedRect
-                  x={x}
-                  y={y}
-                  width={BAR_WIDTH}
-                  height={barH}
-                  r={BAR_WIDTH / 2}
-                >
-                  <LinearGradient
-                    start={vec(x, 0)}
-                    end={vec(x, CANVAS_HEIGHT)}
-                    colors={colorsB}
-                  />
-                </RoundedRect>
-              </Group>
-            );
-          })}
+          {BASE_SCALES.map((scale, i) => (
+            <WaveBar
+              key={`b-${i}`}
+              x={rightGroupX + i * (BAR_WIDTH + BAR_GAP)}
+              centerY={centerY}
+              baseScale={scale}
+              progress={progressB}
+              colors={colorsB}
+            />
+          ))}
         </Group>
       </Canvas>
 
-      {/* 주파수 표시 */}
       <View style={styles.freqRow}>
         <Text style={[styles.freqText, isActiveA && { color: COLORS.primary }]}>
           {baseFreq} Hz
         </Text>
         <Text style={[styles.freqText, isActiveB && { color: COLORS.secondary }]}>
-          ? Hz
+          {centsLabel}
         </Text>
       </View>
     </View>
@@ -182,25 +201,21 @@ export default function SkiaWaveVisualizer({
 }
 
 const styles = StyleSheet.create({
-  canvas: {
-    height: CANVAS_HEIGHT,
+  wrapper: {
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.xl,
     marginBottom: SPACING.xl,
     borderWidth: 1,
     borderColor: COLORS.border,
     overflow: 'hidden',
-    justifyContent: 'center',
+    paddingVertical: SPACING.md,
   },
   labelsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingTop: SPACING.md,
+    marginBottom: SPACING.xs,
   },
-  labelBox: {
-    flex: 1,
-    alignItems: 'center',
-  },
+  labelBox: { flex: 1, alignItems: 'center' },
   label: {
     color: COLORS.textMuted,
     fontSize: FONT_SIZE.sm,
@@ -209,10 +224,10 @@ const styles = StyleSheet.create({
   freqRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingBottom: SPACING.sm,
+    marginTop: SPACING.xs,
   },
   freqText: {
-    color: COLORS.textDisabled,
+    color: COLORS.textMuted,
     fontSize: FONT_SIZE.xs,
     fontWeight: '500',
   },

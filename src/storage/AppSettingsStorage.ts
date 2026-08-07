@@ -11,6 +11,8 @@ import { REFERENCE_PRESETS } from '../constants/theme';
 
 const STORAGE_KEYS = {
   REFERENCE_PITCH_PRESET: '@harmonitune/reference_pitch_preset',
+  HAPTICS_ENABLED: '@harmonitune/haptics_enabled',
+  ONBOARDING_DONE: '@harmonitune/onboarding_done',
 } as const;
 
 const DEFAULT_PRESET: ReferencePitchPreset = 'standard';
@@ -53,6 +55,41 @@ export class AppSettingsStorage {
       );
     } catch (e) {
       console.error('[AppSettingsStorage] 기준 음고 저장 실패:', e);
+    }
+  }
+
+  /** 햅틱(진동) 사용 여부. 기본 켜짐. */
+  static async getHapticsEnabled(): Promise<boolean> {
+    try {
+      const raw = await AsyncStorage.getItem(STORAGE_KEYS.HAPTICS_ENABLED);
+      return raw === null ? true : raw === 'true';
+    } catch {
+      return true;
+    }
+  }
+
+  static async setHapticsEnabled(value: boolean): Promise<void> {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.HAPTICS_ENABLED, String(value));
+    } catch (e) {
+      console.error('[AppSettingsStorage] 햅틱 설정 저장 실패:', e);
+    }
+  }
+
+  /** 첫 실행 안내(볼륨 맞추기)를 마쳤는지. */
+  static async getOnboardingDone(): Promise<boolean> {
+    try {
+      return (await AsyncStorage.getItem(STORAGE_KEYS.ONBOARDING_DONE)) === 'true';
+    } catch {
+      return false;
+    }
+  }
+
+  static async setOnboardingDone(value: boolean): Promise<void> {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.ONBOARDING_DONE, String(value));
+    } catch (e) {
+      console.error('[AppSettingsStorage] 온보딩 상태 저장 실패:', e);
     }
   }
 }

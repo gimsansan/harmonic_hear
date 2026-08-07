@@ -1,18 +1,18 @@
 {
   "expo": {
-    "name": "청능 애플리케이션",
-    "slug": "threads-clone",
+    "name": "HarmoniTune",
+    "slug": "harmonitune",
     "version": "1.0.0",
-    "orientation": "default",
+    "orientation": "portrait",
     "icon": "./assets/images/splash.png",
-    "scheme": "threadc",
-    "userInterfaceStyle": "automatic",
+    "scheme": "harmonitune",
+    "userInterfaceStyle": "dark",
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/splash.png",
         "backgroundColor": "#c9c9c9"
       },
-      "package": "com.vlondy.threadsclone"
+      "package": "com.vlondy.harmonitune"
     },
     "plugins": [
       "expo-router",

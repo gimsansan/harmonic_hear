@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -7,11 +7,31 @@ import {
   SafeAreaView,
   ScrollView,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { COLORS, SPACING, FONT_SIZE, RADIUS } from '../src/constants/theme';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { AppSettingsStorage } from '../src/storage/AppSettingsStorage';
+import {
+  COLORS,
+  SPACING,
+  FONT_SIZE,
+  RADIUS,
+  MIN_TOUCH_TARGET,
+} from '../src/constants/theme';
 
 export default function HomeScreen() {
   const router = useRouter();
+
+  /** 훈련 진입 — 첫 실행이면 볼륨 맞추기 안내를 먼저 보여준다 (P2-1) */
+  const handleStartTraining = useCallback(async () => {
+    const done = await AppSettingsStorage.getOnboardingDone();
+    router.push(done ? '/training' : '/onboarding');
+  }, [router]);
+
+  // 첫 진입 시 미리 확인해 두어 탭 반응이 느려지지 않게 한다
+  useFocusEffect(
+    useCallback(() => {
+      void AppSettingsStorage.getOnboardingDone();
+    }, []),
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -30,8 +50,10 @@ export default function HomeScreen() {
         <View style={styles.cardSection}>
           <TouchableOpacity
             style={styles.mainCard}
-            onPress={() => router.push('/training')}
+            onPress={handleStartTraining}
             activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="음고 감각 적응 훈련 시작"
           >
             <View style={styles.cardIconRow}>
               <Text style={styles.cardIcon}>🎧</Text>
@@ -51,6 +73,8 @@ export default function HomeScreen() {
               style={styles.subCard}
               onPress={() => router.push('/stats')}
               activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="훈련 통계 보기"
             >
               <Text style={styles.subCardIcon}>📊</Text>
               <Text style={styles.subCardTitle}>훈련 통계</Text>
@@ -61,6 +85,8 @@ export default function HomeScreen() {
               style={styles.subCard}
               onPress={() => router.push('/settings')}
               activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="설정 및 정보"
             >
               <Text style={styles.subCardIcon}>⚙️</Text>
               <Text style={styles.subCardTitle}>설정 및 정보</Text>
@@ -128,8 +154,10 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.xl,
     padding: SPACING.lg,
+    minHeight: MIN_TOUCH_TARGET,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    // 메인 동선임을 시각적으로 구분 (P3-11)
+    borderColor: COLORS.primary,
     marginBottom: SPACING.md,
   },
   cardIconRow: {
@@ -158,7 +186,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
   },
   startBadgeText: {
-    color: COLORS.background,
+    color: COLORS.onPrimary,
     fontSize: FONT_SIZE.md,
     fontWeight: 'bold',
   },

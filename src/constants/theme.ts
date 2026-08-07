@@ -30,11 +30,17 @@ export const COLORS = {
   textPrimary: '#FFFFFF',
   /** 보조 텍스트 */
   textSecondary: '#D1D5F0',
-  /** 비활성 텍스트 */
+  /** 비활성 텍스트 — 대비 5.8:1 (WCAG AA 통과) */
   textMuted: '#8A8FAD',
-  /** 매우 비활성 텍스트 */
-  textDisabled: '#6B70A0',
-  /** 최소 텍스트 (고지문구 등) */
+  /**
+   * 매우 비활성 텍스트 — 대비 4.75:1 (WCAG AA 통과)
+   * 이전 #6B70A0은 3.9:1로 AA 미달이었고, 하필 규제 고지문에 쓰이고 있었음
+   */
+  textDisabled: '#7B80A0',
+  /**
+   * 장식용 최소 대비 — 대비 2.3:1 (AA 미달).
+   * **본문 텍스트에 쓰지 마세요.** 구분선·아이콘 등 비필수 요소 전용.
+   */
   textMinimal: '#4A4E6A',
 
   /** 비활성 시각화 바 */
@@ -51,7 +57,13 @@ export const COLORS = {
 
   /** 비활성 재생 버튼 */
   disabledButton: '#2A4D59',
+
+  /** primary 배경 위에 얹는 텍스트 (시안 버튼의 글자색) */
+  onPrimary: '#0A101D',
 } as const;
+
+/** 안드로이드 최소 터치 타깃 (dp) */
+export const MIN_TOUCH_TARGET = 48;
 
 export const SPACING = {
   xs: 4,
@@ -112,6 +124,10 @@ export const AUDIO = {
   ATTACK_TIME: 0.05,
   /** Gain Envelope 릴리스 시간 (초) */
   RELEASE_TIME: 0.05,
+  /** 순수 파형 모드 서스테인 게인 */
+  PEAK_GAIN_WAVE: 0.4,
+  /** 포먼트 합성 모드 서스테인 게인 */
+  PEAK_GAIN_VOICE: 0.3,
   /** 포먼트 합성 F1 주파수 */
   FORMANT_F1: 800,
   /** 포먼트 합성 F2 주파수 */
@@ -121,18 +137,51 @@ export const AUDIO = {
 } as const;
 
 export const STAIRCASE = {
-  /** 초기 cent 격차 */
-  INITIAL_CENTS: 50,
+  /**
+   * 초기 cent 격차.
+   * 누구나 들리는 쉬운 값에서 시작해 하강한다.
+   * (이전 50은 반음의 절반이라 초심자가 첫 문제부터 틀리는 원인이었음)
+   */
+  INITIAL_CENTS: 200,
   /** 최소 cent 격차 */
   MIN_CENTS: 10,
   /** 최대 cent 격차 (문헌 프록시 잠정값 · 파일럿 검증 대상) */
   MAX_CENTS: 300,
-  /** 정답 시 감소량 */
-  STEP_DOWN: 10,
-  /** 오답 시 증가량 */
-  STEP_UP: 10,
-  /** 난이도 하강 트리거 (연속 정답 수) */
+  /** 난이도 하강 트리거 (연속 정답 수) — 2-down-1-up */
   STREAK_THRESHOLD: 2,
+
+  /**
+   * 가변 스텝 표 — 반전이 쌓일수록 조정 폭을 좁힌다.
+   *
+   * 초반엔 크게 움직여 빨리 수렴시키고, 자기 수준 근처에서는 미세 조정한다.
+   * `fromReversal` 이상의 반전 횟수에서 해당 `step`을 적용한다.
+   */
+  STEP_SCHEDULE: [
+    { fromReversal: 0, step: 50 },
+    { fromReversal: 2, step: 20 },
+    { fromReversal: 4, step: 10 },
+  ],
+
+  /**
+   * 역치 계산에서 버리는 초기 반전 수.
+   * 수렴 전 구간이라 실제 능력보다 값이 크고 흔들린다.
+   */
+  THRESHOLD_DISCARD_REVERSALS: 2,
+  /** 역치를 산출하기 위한 최소 반전 수 (이보다 적으면 역치 없음) */
+  THRESHOLD_MIN_REVERSALS: 4,
+} as const;
+
+/**
+ * 평가(Assessment) 세션 프로토콜.
+ *
+ * 훈련과 달리 **정해진 조건에서 자동 종료**합니다.
+ * 사용자가 임의로 멈추면 세션마다 조건이 달라져 측정값을 비교할 수 없습니다.
+ */
+export const ASSESSMENT = {
+  /** 이 반전 수에 도달하면 자동 종료 (역치가 충분히 수렴한 시점) */
+  TARGET_REVERSALS: 8,
+  /** 반전이 쌓이지 않아도 이 시행 수에서 강제 종료 (피로 방지) */
+  MAX_TRIALS: 30,
 } as const;
 
 export const KEYZONE = {
