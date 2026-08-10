@@ -2,68 +2,121 @@
  * 디자인 토큰 (§7 디자인 시스템)
  *
  * 명세서에서 정의된 색상·간격·타이포그래피를 중앙 관리합니다.
+ *
+ * 클리니컬 리디자인: 어두운 네이비 기조 → **라이트 기조**로 전면 교체.
+ * 화이트 서피스 + 블루 프라이머리, 주의·소리 B 계열만 절제된 오렌지.
+ *
+ * 대비는 라이트 배경(`background` #F1F5FA)을 기준으로 재계산했습니다.
+ * 디자인 시안의 회색이 몇 군데 AA에 못 미쳐, 색상 계열은 유지한 채
+ * 명도만 낮춰 잡았습니다 (아래 각 항목의 대비 수치 참고).
  */
 
 export const COLORS = {
-  /** 어두운 네이비 배경 */
-  background: '#12131C',
+  /** 페이지 배경 — 아주 옅은 블루그레이 */
+  background: '#F1F5FA',
   /** 카드/서피스 배경 */
-  surface: '#1A1C2E',
-  /** 입력 필드/탭 배경 */
-  surfaceAlt: '#1E202F',
-  /** 활성 탭 배경 */
-  surfaceActive: '#2C3048',
+  surface: '#FFFFFF',
+  /** 세그먼트 탭 트랙 배경 */
+  surfaceAlt: '#EAEFF6',
+  /** 활성 세그먼트 (트랙 위에 뜨는 흰 알약) */
+  surfaceActive: '#FFFFFF',
+  /** 안내문처럼 살짝 눌러 둔 면 */
+  surfaceSubtle: '#F4F7FB',
   /** 테두리 */
-  border: '#2A2D48',
+  border: '#DBE3EE',
+  /** 카드 내부 구분선 — 테두리보다 더 옅다 */
+  borderSoft: '#EEF2F7',
 
-  /** 소리 A / 시안 */
-  primary: '#00E5FF',
-  /** 소리 B / 오렌지 */
-  secondary: '#FF6D00',
-  /** 정답 */
-  success: '#00E676',
-  /** 오답 */
-  error: '#FF5252',
+  /** 소리 A / 프라이머리 블루 — 흰 배경 대비 4.9:1 */
+  primary: '#1B6FD6',
+  /** 프라이머리 연한 면 (아이콘 타일·활성 탭 배경) */
+  primarySoft: '#E8F1FD',
+  /** 소리 B / 오렌지 — **면·테두리·아이콘 전용** (텍스트 대비 3.1:1로 AA 미달) */
+  secondary: '#E8703A',
+  /** 오렌지 계열 **텍스트**용 — 대비 5.0:1 (WCAG AA 통과) */
+  secondaryText: '#B8511E',
+  /** 오렌지 연한 면 */
+  secondarySoft: '#FDF2EA',
+  /** 정답 / 개선 — 대비 5.3:1 */
+  success: '#0F7A58',
+  /** 정답 카드 테두리 */
+  successAccent: '#7FD6B3',
+  /** 오답 / 파괴적 동작 — 대비 4.8:1 (시안 #D64545는 3.9:1로 AA 미달) */
+  error: '#C0392B',
 
-  /** 주요 텍스트 */
-  text: '#FFFFFF',
-  textPrimary: '#FFFFFF',
-  /** 보조 텍스트 */
-  textSecondary: '#D1D5F0',
-  /** 비활성 텍스트 — 대비 5.8:1 (WCAG AA 통과) */
-  textMuted: '#8A8FAD',
+  /** 주요 텍스트 — 대비 15.1:1 */
+  text: '#12233B',
+  textPrimary: '#12233B',
+  /** 보조 텍스트 — 대비 8.3:1 */
+  textSecondary: '#3C4A60',
+  /** 비활성 텍스트 — 대비 5.6:1 (WCAG AA 통과) */
+  textMuted: '#55637A',
   /**
-   * 매우 비활성 텍스트 — 대비 4.75:1 (WCAG AA 통과)
-   * 이전 #6B70A0은 3.9:1로 AA 미달이었고, 하필 규제 고지문에 쓰이고 있었음
+   * 매우 비활성 텍스트 — 대비 4.8:1 (WCAG AA 통과)
+   * 규제 고지문이 이 색을 쓰므로 AA 아래로 내리지 마세요.
    */
-  textDisabled: '#7B80A0',
+  textDisabled: '#5F6E85',
   /**
-   * 장식용 최소 대비 — 대비 2.3:1 (AA 미달).
+   * 장식용 최소 대비 — 대비 2.6:1 (AA 미달).
    * **본문 텍스트에 쓰지 마세요.** 구분선·아이콘 등 비필수 요소 전용.
    */
-  textMinimal: '#4A4E6A',
+  textMinimal: '#9AA6B8',
 
   /** 비활성 시각화 바 */
-  waveInactive: '#333A52',
+  waveInactive: '#C6D2E2',
   /** 높음 버튼 배경 */
-  highButtonBg: '#1E2D3D',
+  highButtonBg: '#EEF5FE',
   /** 낮음 버튼 배경 */
-  lowButtonBg: '#3D2520',
+  lowButtonBg: '#FDF2EA',
 
   /** 정답 피드백 배경 */
-  successBg: 'rgba(0, 230, 118, 0.15)',
+  successBg: '#EAFAF3',
   /** 오답 피드백 배경 */
-  errorBg: 'rgba(255, 82, 82, 0.15)',
+  errorBg: '#FBEDED',
 
-  /** 비활성 재생 버튼 */
-  disabledButton: '#2A4D59',
+  /** 비활성 재생 버튼 (글자색은 textSecondary — 대비 6.0:1) */
+  disabledButton: '#C3D4EA',
 
-  /** primary 배경 위에 얹는 텍스트 (시안 버튼의 글자색) */
-  onPrimary: '#0A101D',
+  /** primary 배경 위에 얹는 텍스트 (파란 버튼의 글자색) */
+  onPrimary: '#FFFFFF',
+
+  /**
+   * 어두운 강조 패널 — 역치처럼 "이 화면의 결론"인 지표 하나에만 씁니다.
+   * 라이트 화면에서 딱 한 덩이만 어두우면 시선이 그리로 모입니다.
+   */
+  ink: '#12233B',
+  inkText: '#FFFFFF',
+  /** ink 위 보조 텍스트 — 대비 7.7:1 */
+  inkMuted: '#9DB8DC',
+  /** ink 위 축 라벨 — 대비 5.1:1 */
+  inkAxis: '#7F93B3',
+  /** ink 위 구분선 */
+  inkBorder: '#24374F',
+  /** ink 위 그래프 선·강조 — 대비 7.3:1 */
+  inkAccent: '#7FB3F2',
+  /** ink 위 개선 표시 */
+  inkSuccess: '#5FE0B0',
+  inkSuccessBg: '#12604A',
+  inkSuccessBorder: '#1F8F68',
 } as const;
 
 /** 안드로이드 최소 터치 타깃 (dp) */
 export const MIN_TOUCH_TARGET = 48;
+
+/**
+ * 안드로이드 그림자 단계 (`elevation`).
+ *
+ * 라이트 기조에서는 테두리로 면을 나누고, 그림자는 "지금 눌러야 할 것"
+ * 하나에만 씁니다. 카드마다 그림자를 주면 화면이 지저분해집니다.
+ */
+export const ELEVATION = {
+  /** 기본 카드 — 테두리만 (그림자 없음) */
+  flat: 0,
+  /** 주 동선 카드 */
+  card: 2,
+  /** 주 실행 버튼 */
+  raised: 4,
+} as const;
 
 export const SPACING = {
   xs: 4,
@@ -81,6 +134,8 @@ export const RADIUS = {
   lg: 14,
   xl: 16,
   xxl: 20,
+  /** 큰 카드 — 홈 메인 카드·결과 히어로 */
+  xxxl: 22,
   pill: 999,
 } as const;
 

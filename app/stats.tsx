@@ -2,6 +2,10 @@
  * 훈련 통계 화면 (Phase 6)
  *
  * 세션별 누적 기록, 최소 cent 격차, 정답률 추이, 반응 시간 통계 조회
+ *
+ * 클리니컬 리디자인: 역치 하나를 짙은 히어로 카드로 올리고,
+ * 나머지 지표는 그 아래 작은 타일로 내렸습니다.
+ * 이전에는 카드 4개가 같은 크기라 "무엇을 봐야 하는지"가 없었습니다.
  */
 
 import React, { useState, useCallback } from 'react';
@@ -15,6 +19,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import Feather from '@expo/vector-icons/Feather';
 import { TrainingStorage } from '../src/storage/TrainingStorage';
 import type { SessionResult } from '../src/training/SessionManager';
 import ThresholdChart from '../src/components/ThresholdChart';
@@ -90,7 +95,7 @@ export default function StatsScreen() {
           <Text style={styles.backButtonText}>← 뒤로</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>훈련 통계</Text>
-        <View style={{ width: 60 }} />
+        <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView
@@ -100,81 +105,62 @@ export default function StatsScreen() {
             refreshing={refreshing}
             onRefresh={loadData}
             tintColor={COLORS.primary}
+            colors={[COLORS.primary]}
           />
         }
       >
-        {/* 요약 카드 그리드 */}
-        <View style={styles.grid}>
-          <View style={styles.card}>
-            <Text style={styles.cardEmoji}>🏆</Text>
-            <Text style={[styles.cardValue, { color: COLORS.primary }]}>
+        {/* 역치 추이 — 이 화면의 결론 (P2-3) */}
+        <ThresholdChart
+          values={[...recentSessions]
+            .reverse() // 목록은 최근순이므로 그래프용으로 시간순 복원
+            .map((s) => s.thresholdCents)
+            .filter((v): v is number => typeof v === 'number')}
+        />
+
+        {/* 보조 지표 타일 */}
+        <View style={styles.tileRow}>
+          <View style={styles.tile}>
+            <Text style={[styles.tileValue, styles.tileValueAccent]}>
               {stats?.bestThresholdCents != null
                 ? `${stats.bestThresholdCents}`
                 : '-'}
             </Text>
-            <Text style={styles.cardLabel}>변별 역치 (최고)</Text>
+            <Text style={styles.tileLabel}>최고 역치</Text>
           </View>
 
-          <View style={styles.card}>
-            <Text style={styles.cardEmoji}>📈</Text>
-            <Text style={styles.cardValue}>
-              {stats?.latestThresholdCents != null
-                ? `${stats.latestThresholdCents}`
-                : '-'}
-            </Text>
-            <Text style={styles.cardLabel}>최근 역치</Text>
-          </View>
-
-          <View style={styles.card}>
-            <Text style={styles.cardEmoji}>🎯</Text>
-            <Text style={styles.cardValue}>
+          <View style={styles.tile}>
+            <Text style={styles.tileValue}>
               {stats ? `${formatAccuracy(stats.overallAccuracy)}%` : '-'}
             </Text>
-            <Text style={styles.cardLabel}>누적 정답률</Text>
+            <Text style={styles.tileLabel}>누적 정답률</Text>
           </View>
 
-          <View style={styles.card}>
-            <Text style={styles.cardEmoji}>⏱️</Text>
-            <Text style={styles.cardValue}>
+          <View style={styles.tile}>
+            <Text style={styles.tileValue}>
               {stats?.averageReactionMs
-                ? `${Math.round(stats.averageReactionMs)} ms`
+                ? `${Math.round(stats.averageReactionMs)}`
                 : '-'}
+              {stats?.averageReactionMs ? (
+                <Text style={styles.tileUnit}>ms</Text>
+              ) : null}
             </Text>
-            <Text style={styles.cardLabel}>평균 반응 시간</Text>
+            <Text style={styles.tileLabel}>평균 반응</Text>
           </View>
         </View>
 
-        {/* 역치 안내 + 누적 요약 */}
-        <View style={styles.summaryBox}>
-          <Text style={styles.summaryHint}>
-            변별 역치는 구별할 수 있는 가장 작은 음정 차이입니다.{'\n'}
-            <Text style={{ color: COLORS.primary }}>숫자가 작을수록 정밀</Text>
-            하게 듣고 있다는 뜻입니다.
-          </Text>
-          <Text style={styles.summaryLine}>
-            총 {stats?.totalSessions ?? 0}세션 · {stats?.totalTrials ?? 0}시행
-            {stats && stats.totalSessions > stats.sessionsWithThreshold
-              ? ` · 역치 산출 ${stats.sessionsWithThreshold}세션`
-              : ''}
-          </Text>
-        </View>
-
-        {/* 역치 추이 그래프 (P2-3) */}
-        {recentSessions.length > 0 && (
-          <ThresholdChart
-            values={[...recentSessions]
-              .reverse() // 목록은 최근순이므로 그래프용으로 시간순 복원
-              .map((s) => s.thresholdCents)
-              .filter((v): v is number => typeof v === 'number')}
-          />
-        )}
+        <Text style={styles.summaryLine}>
+          총 {stats?.totalSessions ?? 0}세션 · {stats?.totalTrials ?? 0}시행
+          {stats && stats.totalSessions > stats.sessionsWithThreshold
+            ? ` · 역치 산출 ${stats.sessionsWithThreshold}세션`
+            : ''}
+        </Text>
 
         {/* 최근 세션 기록 */}
         <Text style={styles.sectionTitle}>최근 훈련 세션 (최대 10개)</Text>
 
         {recentSessions.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>📊</Text>
+            <Feather name="bar-chart-2" size={40} color={COLORS.textMinimal} />
             <Text style={styles.emptyTitle}>저장된 훈련 기록이 없습니다</Text>
             <Text style={styles.emptyDesc}>
               &lsquo;음고 감각 적응 훈련&rsquo;을 진행한 후 세션을 저장해보세요.
@@ -192,13 +178,21 @@ export default function StatsScreen() {
             const accuracyPct = Math.round(
               (session.correctCount / session.totalTrials) * 100,
             );
-            const modeText =
-              session.mode === 'assessment' ? '📋 평가' : '🏋️ 훈련';
+            const isAssessment = session.mode === 'assessment';
 
             return (
               <View key={session.id} style={styles.sessionCard}>
                 <View style={styles.sessionHeader}>
-                  <Text style={styles.sessionMode}>{modeText}</Text>
+                  <View style={styles.sessionModeRow}>
+                    <Feather
+                      name={isAssessment ? 'clipboard' : 'headphones'}
+                      size={13}
+                      color={COLORS.textMuted}
+                    />
+                    <Text style={styles.sessionMode}>
+                      {isAssessment ? '평가' : '훈련'}
+                    </Text>
+                  </View>
                   <Text style={styles.sessionDate}>
                     {formatTime(session.endedAt)}
                   </Text>
@@ -220,7 +214,10 @@ export default function StatsScreen() {
                   <View style={styles.detailItem}>
                     <Text style={styles.detailLabel}>변별 역치</Text>
                     <Text
-                      style={[styles.detailValue, { color: COLORS.secondary }]}
+                      style={[
+                        styles.detailValue,
+                        { color: COLORS.secondaryText },
+                      ]}
                     >
                       {session.thresholdCents != null
                         ? session.thresholdCents
@@ -245,79 +242,74 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.sm,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
   backButton: {
+    width: 60,
     paddingVertical: SPACING.xs,
-    paddingRight: SPACING.md,
     minHeight: MIN_TOUCH_TARGET,
     justifyContent: 'center',
   },
   backButtonText: {
     color: COLORS.primary,
-    fontSize: FONT_SIZE.md,
+    fontSize: FONT_SIZE.lg,
     fontWeight: '600',
   },
   headerTitle: {
+    flex: 1,
+    textAlign: 'center',
     color: COLORS.text,
-    fontSize: FONT_SIZE.lg,
+    fontSize: FONT_SIZE.xl,
     fontWeight: '700',
   },
+  headerSpacer: { width: 60 },
   scrollContent: {
     padding: SPACING.lg,
+    paddingBottom: 40,
   },
-  grid: {
+  tileRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: SPACING.xl,
+    gap: 9,
   },
-  card: {
-    width: '48%',
+  tile: {
+    flex: 1,
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
-    padding: SPACING.md,
-    marginBottom: SPACING.md,
+    paddingVertical: 13,
+    paddingHorizontal: SPACING.sm,
     borderWidth: 1,
     borderColor: COLORS.border,
     alignItems: 'center',
+    gap: SPACING.xs,
   },
-  cardEmoji: {
-    fontSize: 28,
-    marginBottom: SPACING.xs,
-  },
-  cardValue: {
+  tileValue: {
     color: COLORS.text,
-    fontSize: FONT_SIZE.lg,
-    fontWeight: '700',
-    marginBottom: SPACING.xs,
+    fontSize: FONT_SIZE.xxxl,
+    fontWeight: '800',
   },
-  cardLabel: {
-    color: COLORS.textMuted,
+  tileValueAccent: {
+    color: COLORS.primary,
+  },
+  tileUnit: {
+    color: COLORS.textDisabled,
     fontSize: FONT_SIZE.xs,
+    fontWeight: '600',
   },
-  summaryBox: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    marginBottom: SPACING.xl,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  summaryHint: {
-    color: COLORS.textMuted,
+  tileLabel: {
+    color: COLORS.textDisabled,
     fontSize: FONT_SIZE.xs,
-    lineHeight: 18,
-    marginBottom: SPACING.sm,
+    textAlign: 'center',
   },
   summaryLine: {
-    color: COLORS.textSecondary,
-    fontSize: FONT_SIZE.sm,
+    color: COLORS.textDisabled,
+    fontSize: FONT_SIZE.xs + 1,
     fontWeight: '600',
+    textAlign: 'center',
+    marginTop: SPACING.md,
+    marginBottom: SPACING.xl,
   },
   sectionTitle: {
     color: COLORS.text,
@@ -327,44 +319,44 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
+    borderRadius: RADIUS.xl,
     padding: SPACING.xl,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: COLORS.border,
-  },
-  emptyEmoji: {
-    fontSize: 48,
-    marginBottom: SPACING.md,
+    gap: SPACING.xs,
   },
   emptyTitle: {
     color: COLORS.text,
     fontSize: FONT_SIZE.md,
     fontWeight: '700',
-    marginBottom: SPACING.xs,
+    marginTop: SPACING.sm,
   },
   emptyDesc: {
     color: COLORS.textMuted,
     fontSize: FONT_SIZE.sm,
     textAlign: 'center',
-    marginBottom: SPACING.lg,
+    marginBottom: SPACING.md,
+    lineHeight: 19,
   },
   startButton: {
     backgroundColor: COLORS.primary,
-    paddingHorizontal: SPACING.lg,
+    paddingHorizontal: SPACING.xl,
     paddingVertical: SPACING.md,
     borderRadius: RADIUS.md,
+    minHeight: MIN_TOUCH_TARGET,
+    justifyContent: 'center',
   },
   startButtonText: {
-    color: COLORS.background,
+    color: COLORS.onPrimary,
     fontSize: FONT_SIZE.md,
     fontWeight: '700',
   },
   sessionCard: {
     backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    marginBottom: SPACING.md,
+    borderRadius: RADIUS.md + 1,
+    padding: 13,
+    marginBottom: SPACING.sm + 2,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
@@ -372,10 +364,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: SPACING.sm,
-    paddingBottom: SPACING.xs,
+    marginBottom: 9,
+    paddingBottom: SPACING.sm,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: COLORS.borderSoft,
+  },
+  sessionModeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs + 2,
   },
   sessionMode: {
     color: COLORS.text,
@@ -383,19 +380,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   sessionDate: {
-    color: COLORS.textMuted,
+    color: COLORS.textDisabled,
     fontSize: FONT_SIZE.xs,
   },
   sessionDetails: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingTop: SPACING.xs,
   },
   detailItem: {
     alignItems: 'center',
   },
   detailLabel: {
-    color: COLORS.textMuted,
+    color: COLORS.textDisabled,
     fontSize: FONT_SIZE.xs,
     marginBottom: 2,
   },

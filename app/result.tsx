@@ -5,6 +5,8 @@
  * 정보 전달도 동기부여도 약해서 전용 화면으로 분리했습니다.
  *
  * 직전 세션과 비교해 "좋아졌는지"를 먼저 보여주는 것이 핵심입니다.
+ *
+ * 클리니컬 리디자인: 역치 히어로만 짙은 네이비로 두어 결론을 한 점에 모읍니다.
  */
 
 import React, { useCallback, useState } from 'react';
@@ -17,6 +19,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import Feather from '@expo/vector-icons/Feather';
 
 import { TrainingStorage } from '../src/storage/TrainingStorage';
 import type { SessionResult } from '../src/training/SessionManager';
@@ -27,6 +30,7 @@ import {
   RADIUS,
   STAIRCASE,
   MIN_TOUCH_TARGET,
+  ELEVATION,
 } from '../src/constants/theme';
 
 export default function ResultScreen() {
@@ -94,9 +98,14 @@ export default function ResultScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.eyebrow}>
-          {session.mode === 'assessment' ? '📋 평가 완료' : '🏋️ 훈련 완료'}
-        </Text>
+        <View style={styles.eyebrowRow}>
+          <View style={styles.eyebrowTile}>
+            <Feather name="check" size={17} color={COLORS.primary} />
+          </View>
+          <Text style={styles.eyebrow}>
+            {session.mode === 'assessment' ? '평가 완료' : '훈련 완료'}
+          </Text>
+        </View>
 
         {/* 대표 지표 */}
         <View style={styles.heroCard}>
@@ -125,14 +134,26 @@ export default function ResultScreen() {
               delta > 0 ? styles.deltaGood : styles.deltaFlat,
             ]}
           >
-            <Text style={styles.deltaText}>
+            <Text
+              style={[
+                styles.deltaText,
+                delta > 0 ? styles.deltaTextGood : styles.deltaTextFlat,
+              ]}
+            >
               {delta > 0
                 ? `지난번보다 ${delta} 좋아졌습니다`
                 : delta < 0
                   ? `지난번보다 ${Math.abs(delta)} 높습니다`
                   : '지난번과 같습니다'}
             </Text>
-            <Text style={styles.deltaSub}>지난 기록 {priorThreshold}</Text>
+            <Text
+              style={[
+                styles.deltaSub,
+                delta > 0 ? styles.deltaTextGood : styles.deltaTextFlat,
+              ]}
+            >
+              지난 기록 {priorThreshold}
+            </Text>
           </View>
         )}
 
@@ -143,7 +164,9 @@ export default function ResultScreen() {
             <Text style={styles.cellLabel}>시행</Text>
           </View>
           <View style={styles.cell}>
-            <Text style={styles.cellValue}>{accuracy}%</Text>
+            <Text style={[styles.cellValue, styles.cellValueAccent]}>
+              {accuracy}%
+            </Text>
             <Text style={styles.cellLabel}>정답률</Text>
           </View>
           <View style={styles.cell}>
@@ -214,100 +237,121 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyText: { color: COLORS.textMuted, fontSize: FONT_SIZE.md },
-  content: { padding: SPACING.xl, paddingBottom: 40 },
+  content: { paddingHorizontal: SPACING.xl, paddingVertical: SPACING.xxl, paddingBottom: 40 },
+  eyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    marginBottom: SPACING.lg,
+  },
+  eyebrowTile: {
+    width: 30,
+    height: 30,
+    borderRadius: RADIUS.sm - 1,
+    backgroundColor: COLORS.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   eyebrow: {
     color: COLORS.textMuted,
-    fontSize: FONT_SIZE.md,
-    fontWeight: '600',
-    marginTop: SPACING.md,
-    marginBottom: SPACING.md,
+    fontSize: FONT_SIZE.sm,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   heroCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.xl,
-    padding: SPACING.xxl,
+    backgroundColor: COLORS.ink,
+    borderRadius: RADIUS.xxxl,
+    paddingVertical: SPACING.xxl,
+    paddingHorizontal: SPACING.xl,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.primary,
   },
   heroLabel: {
-    color: COLORS.textMuted,
-    fontSize: FONT_SIZE.md,
-    marginBottom: SPACING.xs,
+    color: COLORS.inkMuted,
+    fontSize: FONT_SIZE.sm,
+    fontWeight: '600',
   },
   heroValue: {
-    color: COLORS.primary,
-    fontSize: 56,
+    color: COLORS.inkText,
+    fontSize: 58,
     fontWeight: '800',
-    lineHeight: 62,
+    lineHeight: 64,
+    marginTop: SPACING.xs + 2,
   },
   heroValueMuted: {
-    color: COLORS.textDisabled,
-    fontSize: 56,
+    color: COLORS.inkAxis,
+    fontSize: 58,
     fontWeight: '800',
-    lineHeight: 62,
+    lineHeight: 64,
+    marginTop: SPACING.xs + 2,
   },
   heroUnit: {
-    color: COLORS.textMuted,
+    color: COLORS.inkMuted,
     fontSize: FONT_SIZE.sm,
     textAlign: 'center',
     marginTop: SPACING.xs,
     lineHeight: 19,
   },
   deltaCard: {
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    marginTop: SPACING.md,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: SPACING.sm,
+    borderRadius: RADIUS.xl,
+    paddingVertical: SPACING.lg - 1,
+    paddingHorizontal: 18,
+    marginTop: SPACING.lg,
     borderWidth: 1,
   },
   deltaGood: {
     backgroundColor: COLORS.successBg,
-    borderColor: COLORS.success,
+    borderColor: COLORS.successAccent,
   },
   deltaFlat: {
     backgroundColor: COLORS.surface,
     borderColor: COLORS.border,
   },
   deltaText: {
-    color: COLORS.text,
+    flexShrink: 1,
     fontSize: FONT_SIZE.lg,
     fontWeight: '700',
   },
   deltaSub: {
-    color: COLORS.textMuted,
-    fontSize: FONT_SIZE.xs,
-    marginTop: 2,
+    fontSize: FONT_SIZE.xs + 1,
   },
+  deltaTextGood: { color: COLORS.success },
+  deltaTextFlat: { color: COLORS.textMuted },
   grid: {
     flexDirection: 'row',
-    marginTop: SPACING.lg,
-    gap: SPACING.sm,
+    marginTop: SPACING.md - 2,
+    gap: SPACING.sm + 2,
   },
   cell: {
     flex: 1,
     backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
-    paddingVertical: SPACING.lg,
+    borderRadius: RADIUS.xl - 1,
+    paddingVertical: SPACING.lg - 1,
+    paddingHorizontal: SPACING.sm,
     alignItems: 'center',
+    gap: SPACING.xs,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
   cellValue: {
     color: COLORS.text,
-    fontSize: FONT_SIZE.xxl,
-    fontWeight: '700',
+    fontSize: FONT_SIZE.title,
+    fontWeight: '800',
   },
+  cellValueAccent: { color: COLORS.primary },
   cellLabel: {
-    color: COLORS.textMuted,
+    color: COLORS.textDisabled,
     fontSize: FONT_SIZE.xs,
-    marginTop: 2,
+    textAlign: 'center',
   },
   trackCard: {
     backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    marginTop: SPACING.md,
+    borderRadius: RADIUS.xl - 1,
+    padding: SPACING.lg - 1,
+    marginTop: SPACING.md - 2,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
@@ -315,50 +359,56 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontSize: FONT_SIZE.sm,
     fontWeight: '700',
-    marginBottom: SPACING.xs,
+    marginBottom: SPACING.sm,
   },
   trackLine: {
     color: COLORS.textSecondary,
     fontSize: FONT_SIZE.sm,
+    fontWeight: '600',
+    letterSpacing: 0.3,
     lineHeight: 20,
   },
   trackHint: {
-    color: COLORS.textMuted,
+    color: COLORS.textDisabled,
     fontSize: FONT_SIZE.xs,
-    marginTop: SPACING.xs,
+    marginTop: 9,
   },
   note: {
-    color: COLORS.textMuted,
-    fontSize: FONT_SIZE.sm,
-    lineHeight: 20,
+    color: COLORS.textDisabled,
+    fontSize: FONT_SIZE.xs + 1,
+    lineHeight: 19,
+    textAlign: 'center',
     marginTop: SPACING.lg,
   },
   emphasis: { color: COLORS.primary, fontWeight: '700' },
   primaryButton: {
     marginTop: SPACING.lg,
     backgroundColor: COLORS.primary,
-    borderRadius: RADIUS.lg,
-    paddingVertical: SPACING.lg,
+    borderRadius: RADIUS.lg + 1,
+    height: 54,
     minHeight: MIN_TOUCH_TARGET,
     justifyContent: 'center',
     alignItems: 'center',
+    elevation: ELEVATION.raised,
   },
   primaryButtonText: {
     color: COLORS.onPrimary,
     fontSize: FONT_SIZE.xl,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
   subRow: {
     flexDirection: 'row',
-    gap: SPACING.sm,
-    marginTop: SPACING.sm,
+    gap: SPACING.sm + 2,
+    marginTop: SPACING.sm + 2,
   },
   subButton: {
     flex: 1,
+    height: 48,
     minHeight: MIN_TOUCH_TARGET,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
     borderWidth: 1,
     borderColor: COLORS.border,
   },

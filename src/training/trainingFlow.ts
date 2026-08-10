@@ -83,20 +83,31 @@ export function showsTrialFeedback(mode: SessionMode): boolean {
 /**
  * 재생 버튼 문구.
  * 'waiting'에서는 같은 문제를 다시 들려주는 동작이므로 새 문제와 구분해 표기합니다.
+ *
+ * 아이콘은 화면 쪽에서 붙입니다. 여기에 이모지를 섞어 두면
+ * 문구 자체를 다른 곳(로그·테스트)에서 쓸 때 지저분해집니다.
  */
 export const PLAY_BUTTON_LABEL: Record<GameState, string> = {
-  idle: '▶️ 소리 듣기 (A → B)',
-  playing: '🔊 소리 감상 중...',
-  waiting: '🔁 다시 듣기 (A → B)',
-  answered: '▶️ 다음 소리 듣기 (A → B)',
-  interrupted: '▶️ 새 문제로 다시 듣기 (A → B)',
+  idle: '소리 듣기 (A → B)',
+  playing: '소리 감상 중…',
+  waiting: '다시 듣기 (A → B)',
+  answered: '다음 소리 듣기 (A → B)',
+  interrupted: '새 문제로 다시 듣기 (A → B)',
+};
+
+/** 재생 버튼 아이콘 (Feather 아이콘 이름) */
+export const PLAY_BUTTON_ICON: Record<GameState, string> = {
+  idle: 'play',
+  playing: 'volume-2',
+  waiting: 'rotate-ccw',
+  answered: 'play',
+  interrupted: 'play',
 };
 
 /**
  * 스크린리더용 재생 버튼 문구.
  *
- * 화면 문구에는 이모지가 섞여 있어 "재생 이모지"처럼 읽힙니다.
- * 읽어서 자연스러운 문장을 따로 둡니다.
+ * 화면 문구는 아이콘과 짝지어 읽히므로, 읽어서 자연스러운 문장을 따로 둡니다.
  */
 export const PLAY_BUTTON_A11Y_LABEL: Record<GameState, string> = {
   idle: '소리 듣기, 첫 번째 소리에 이어 두 번째 소리가 재생됩니다',

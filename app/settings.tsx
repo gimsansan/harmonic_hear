@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
+import Feather from '@expo/vector-icons/Feather';
 import { TrainingStorage } from '../src/storage/TrainingStorage';
 import { AppSettingsStorage } from '../src/storage/AppSettingsStorage';
 import { setHapticsEnabled } from '../src/utils/haptics';
@@ -25,6 +26,7 @@ import {
   SPACING,
   FONT_SIZE,
   RADIUS,
+  MIN_TOUCH_TARGET,
   REFERENCE_PRESETS,
   type ReferencePitchPreset,
 } from '../src/constants/theme';
@@ -102,7 +104,7 @@ export default function SettingsScreen() {
           <Text style={styles.backButtonText}>← 뒤로</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>설정 및 정보</Text>
-        <View style={{ width: 60 }} />
+        <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -158,7 +160,7 @@ export default function SettingsScreen() {
                 기준음을 들으며 편안한 크기로 맞춥니다
               </Text>
             </View>
-            <Text style={styles.chevron}>›</Text>
+            <Feather name="chevron-right" size={20} color={COLORS.textMinimal} />
           </TouchableOpacity>
         </View>
 
@@ -177,7 +179,7 @@ export default function SettingsScreen() {
               value={haptics}
               onValueChange={handleToggleHaptics}
               trackColor={{ false: COLORS.border, true: COLORS.primary }}
-              thumbColor={COLORS.text}
+              thumbColor={COLORS.surface}
               accessibilityLabel="진동 피드백"
             />
           </View>
@@ -192,7 +194,8 @@ export default function SettingsScreen() {
             onPress={handleClearData}
             activeOpacity={0.8}
           >
-            <Text style={styles.dangerButtonText}>🗑️ 훈련 데이터 전체 초기화</Text>
+            <Feather name="trash-2" size={16} color={COLORS.error} />
+            <Text style={styles.dangerButtonText}>훈련 데이터 전체 초기화</Text>
           </TouchableOpacity>
         </View>
 
@@ -208,7 +211,14 @@ export default function SettingsScreen() {
 
             <View style={styles.divider} />
 
-            <Text style={styles.disclaimerTitle}>⚠️ 중요 고지 사항</Text>
+            <View style={styles.disclaimerTitleRow}>
+              <Feather
+                name="alert-triangle"
+                size={13}
+                color={COLORS.secondaryText}
+              />
+              <Text style={styles.disclaimerTitle}>중요 고지 사항</Text>
+            </View>
             <Text style={styles.disclaimerText}>
               본 애플리케이션은 의료기기가 아닙니다. 청각 질환의 진단, 치료, 예방
               목적으로 사용할 수 없으며, 인공와우 및 보청기 착용자를 포함한 일반
@@ -230,50 +240,58 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.sm,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
   backButton: {
+    width: 60,
     paddingVertical: SPACING.xs,
-    paddingRight: SPACING.md,
+    minHeight: MIN_TOUCH_TARGET,
+    justifyContent: 'center',
   },
   backButtonText: {
     color: COLORS.primary,
-    fontSize: FONT_SIZE.md,
+    fontSize: FONT_SIZE.lg,
     fontWeight: '600',
   },
   headerTitle: {
+    flex: 1,
+    textAlign: 'center',
     color: COLORS.text,
-    fontSize: FONT_SIZE.lg,
+    fontSize: FONT_SIZE.xl,
     fontWeight: '700',
   },
+  headerSpacer: { width: 60 },
   scrollContent: {
-    padding: SPACING.lg,
+    paddingHorizontal: 18,
+    paddingVertical: SPACING.xl,
+    paddingBottom: 40,
   },
   section: {
-    marginBottom: SPACING.xl,
+    marginBottom: SPACING.xxl - 2,
   },
   sectionHeader: {
     color: COLORS.primary,
-    fontSize: FONT_SIZE.sm,
+    fontSize: FONT_SIZE.xs + 1,
     fontWeight: '700',
-    marginBottom: SPACING.sm,
-    textTransform: 'uppercase',
+    marginBottom: SPACING.sm + 2,
     letterSpacing: 1,
   },
   presetHint: {
-    color: COLORS.textMuted,
+    color: COLORS.textDisabled,
     fontSize: FONT_SIZE.xs,
+    marginTop: 3,
     marginBottom: SPACING.sm,
   },
   presetRow: {
     backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    marginBottom: SPACING.sm,
+    borderRadius: RADIUS.md + 1,
+    paddingVertical: 13,
+    paddingHorizontal: SPACING.lg - 1,
+    marginBottom: SPACING.sm + 2,
+    minHeight: MIN_TOUCH_TARGET,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -281,8 +299,8 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   presetRowSelected: {
+    borderWidth: 1.5,
     borderColor: COLORS.primary,
-    backgroundColor: 'rgba(0, 229, 255, 0.08)',
   },
   presetLabel: {
     color: COLORS.text,
@@ -295,10 +313,11 @@ const styles = StyleSheet.create({
   },
   settingItem: {
     backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    marginBottom: SPACING.sm,
-    marginTop: SPACING.sm,
+    borderRadius: RADIUS.md + 1,
+    paddingVertical: 13,
+    paddingHorizontal: SPACING.lg - 1,
+    marginTop: SPACING.sm + 2,
+    minHeight: MIN_TOUCH_TARGET,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -306,10 +325,6 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   flexBody: { flex: 1, paddingRight: SPACING.md },
-  chevron: {
-    color: COLORS.textMuted,
-    fontSize: FONT_SIZE.xxl,
-  },
   itemTitle: {
     color: COLORS.text,
     fontSize: FONT_SIZE.md,
@@ -317,14 +332,14 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   itemSubtitle: {
-    color: COLORS.textMuted,
+    color: COLORS.textDisabled,
     fontSize: FONT_SIZE.xs,
   },
   badge: {
-    backgroundColor: 'rgba(0, 229, 255, 0.1)',
-    paddingHorizontal: SPACING.sm,
+    backgroundColor: COLORS.primarySoft,
+    paddingHorizontal: 9,
     paddingVertical: 4,
-    borderRadius: RADIUS.sm,
+    borderRadius: RADIUS.sm - 2,
     borderWidth: 1,
     borderColor: COLORS.primary,
   },
@@ -334,9 +349,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   dangerButton: {
-    backgroundColor: 'rgba(255, 82, 82, 0.15)',
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
+    flexDirection: 'row',
+    gap: 7,
+    backgroundColor: COLORS.errorBg,
+    borderRadius: RADIUS.md + 1,
+    padding: SPACING.lg - 2,
+    minHeight: MIN_TOUCH_TARGET,
+    justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: COLORS.error,
@@ -348,7 +367,7 @@ const styles = StyleSheet.create({
   },
   infoCard: {
     backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
+    borderRadius: RADIUS.xl - 1,
     padding: SPACING.lg,
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -359,23 +378,28 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   appVersion: {
-    color: COLORS.textMuted,
+    color: COLORS.textDisabled,
     fontSize: FONT_SIZE.xs,
     marginTop: 2,
   },
   divider: {
     height: 1,
-    backgroundColor: COLORS.border,
-    marginVertical: SPACING.md,
+    backgroundColor: COLORS.borderSoft,
+    marginVertical: SPACING.lg - 2,
+  },
+  disclaimerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs + 1,
+    marginBottom: SPACING.xs + 2,
   },
   disclaimerTitle: {
-    color: COLORS.secondary,
+    color: COLORS.secondaryText,
     fontSize: FONT_SIZE.sm,
     fontWeight: '700',
-    marginBottom: SPACING.xs,
   },
   disclaimerText: {
-    color: COLORS.textMuted,
+    color: COLORS.textDisabled,
     fontSize: FONT_SIZE.xs,
     lineHeight: 18,
   },

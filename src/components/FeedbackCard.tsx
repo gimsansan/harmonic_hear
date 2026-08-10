@@ -49,7 +49,9 @@ export default function FeedbackCard({
         },
       ]}
     >
-      <Text style={styles.text}>{message}</Text>
+      <Text style={[styles.text, isCorrect ? styles.correctText : styles.wrongText]}>
+        {message}
+      </Text>
     </Animated.View>
   );
 }
@@ -63,17 +65,19 @@ const styles = StyleSheet.create({
   },
   correctCard: {
     backgroundColor: COLORS.successBg,
-    borderColor: COLORS.success,
+    borderColor: COLORS.successAccent,
   },
   wrongCard: {
     backgroundColor: COLORS.errorBg,
     borderColor: COLORS.error,
   },
   text: {
-    color: COLORS.textPrimary,
     fontSize: FONT_SIZE.md,
     textAlign: 'center',
     fontWeight: '600',
     lineHeight: 22,
   },
+  // 라이트 배경에서는 면 색만으로 정답/오답이 잘 안 갈린다 — 글자에도 색을 준다
+  correctText: { color: COLORS.success },
+  wrongText: { color: COLORS.error },
 });

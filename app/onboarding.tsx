@@ -15,6 +15,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import Feather from '@expo/vector-icons/Feather';
 
 import { AudioEngine } from '../src/audio/AudioEngine';
 import { AppSettingsStorage } from '../src/storage/AppSettingsStorage';
@@ -122,8 +123,18 @@ export default function OnboardingScreen() {
               accessibilityLabel="볼륨 확인용 기준음 재생"
               accessibilityState={{ disabled: isPlaying }}
             >
-              <Text style={styles.toneButtonText}>
-                {isPlaying ? '🔊 재생 중... 볼륨을 조절하세요' : '🔊 기준음 들어보기'}
+              <Feather
+                name="volume-2"
+                size={16}
+                color={isPlaying ? COLORS.textSecondary : COLORS.primary}
+              />
+              <Text
+                style={[
+                  styles.toneButtonText,
+                  isPlaying && styles.toneButtonTextActive,
+                ]}
+              >
+                {isPlaying ? '재생 중… 볼륨을 조절하세요' : '기준음 들어보기'}
               </Text>
             </TouchableOpacity>
 
@@ -194,7 +205,7 @@ const styles = StyleSheet.create({
   stepCard: {
     flexDirection: 'row',
     backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
+    borderRadius: RADIUS.xl + 2,
     padding: SPACING.lg,
     marginBottom: SPACING.md,
     borderWidth: 1,
@@ -220,22 +231,28 @@ const styles = StyleSheet.create({
   },
   emphasis: { color: COLORS.primary, fontWeight: '700' },
   toneButton: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
     marginTop: SPACING.md,
-    backgroundColor: COLORS.surfaceActive,
-    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.primarySoft,
+    borderRadius: RADIUS.md + 1,
     paddingVertical: SPACING.md,
     minHeight: MIN_TOUCH_TARGET,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: COLORS.primary,
   },
-  toneButtonActive: { backgroundColor: COLORS.disabledButton },
+  toneButtonActive: {
+    backgroundColor: COLORS.disabledButton,
+    borderColor: COLORS.border,
+  },
   toneButtonText: {
     color: COLORS.primary,
     fontSize: FONT_SIZE.md,
     fontWeight: '700',
   },
+  toneButtonTextActive: { color: COLORS.textSecondary },
   toneHint: {
     color: COLORS.textDisabled,
     fontSize: FONT_SIZE.xs,

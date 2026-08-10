@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/splash.png",
     "scheme": "harmonitune",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "light",
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/splash.png",

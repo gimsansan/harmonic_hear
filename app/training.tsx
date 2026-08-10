@@ -19,12 +19,14 @@ import {
   AppState,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import Feather from '@expo/vector-icons/Feather';
 
 import { AudioEngine, SoundMode } from '../src/audio/AudioEngine';
 import { SessionManager, SessionMode } from '../src/training/SessionManager';
 import {
   GameState,
   PLAY_BUTTON_A11Y_LABEL,
+  PLAY_BUTTON_ICON,
   PLAY_BUTTON_LABEL,
   canPressPlay,
   canSubmitAnswer,
@@ -50,6 +52,7 @@ import {
   STAIRCASE,
   REFERENCE_PRESETS,
   MIN_TOUCH_TARGET,
+  ELEVATION,
 } from '../src/constants/theme';
 
 import ModeTab from '../src/components/ModeTab';
@@ -59,6 +62,27 @@ import FeedbackCard from '../src/components/FeedbackCard';
 
 /** 세션 종료 버튼 노출에 필요한 최소 시행 수 */
 const MIN_TRIALS_TO_END = 3;
+
+/** 세션 모드 탭 정의 — JSX에서 두 번 복붙하던 것을 표로 뺐다 */
+const SESSION_MODES: {
+  key: SessionMode;
+  label: string;
+  icon: React.ComponentProps<typeof Feather>['name'];
+  a11yHint: string;
+}[] = [
+  {
+    key: 'training',
+    label: '훈련',
+    icon: 'headphones',
+    a11yHint: '문제마다 정답을 알려줍니다',
+  },
+  {
+    key: 'assessment',
+    label: '평가',
+    icon: 'clipboard',
+    a11yHint: '정답을 숨기고 정해진 조건에서 자동 종료합니다',
+  },
+];
 
 export default function TrainingScreen() {
   const router = useRouter();
@@ -360,15 +384,27 @@ export default function TrainingScreen() {
   const accuracy =
     totalTrials > 0 ? Math.round((correctCount / totalTrials) * 100) : 0;
 
-  /** 진행 상황 안내 — 평가는 종료 조건까지, 훈련은 역치 산출까지를 보여준다 */
-  const progressHint = (() => {
+  /**
+   * 역치 산출 진행도 — 종료 버튼 바로 위에 붙는다.
+   *
+   * 3시행이면 종료 버튼이 열리지만 역치는 그보다 훨씬 뒤에 나옵니다.
+   * 종료를 누르기 직전에 "아직 역치가 안 나왔다"를 보지 못하면
+   * 역치 없는 세션만 쌓여 추이 그래프가 영원히 비어 있게 됩니다.
+   */
+  const thresholdProgress = (() => {
     if (sessionMode === 'assessment') {
-      return `방향 전환 ${reversalCount}/${ASSESSMENT.TARGET_REVERSALS} · 최대 ${ASSESSMENT.MAX_TRIALS}문항에서 자동 종료`;
+      return {
+        text: `방향 전환 ${reversalCount}/${ASSESSMENT.TARGET_REVERSALS} · 최대 ${ASSESSMENT.MAX_TRIALS}문항에서 자동 종료`,
+        ready: reversalCount >= STAIRCASE.THRESHOLD_MIN_REVERSALS,
+      };
     }
     if (reversalCount >= STAIRCASE.THRESHOLD_MIN_REVERSALS) {
-      return '변별 역치 산출 가능';
+      return { text: '✓ 변별 역치 산출 가능 — 지금 끝내도 기록에 남습니다', ready: true };
     }
-    return `난이도 방향 전환 ${reversalCount}/${STAIRCASE.THRESHOLD_MIN_REVERSALS} · 역치 산출까지`;
+    return {
+      text: `역치 산출까지 난이도 방향 전환 ${reversalCount}/${STAIRCASE.THRESHOLD_MIN_REVERSALS} · 지금 끝내면 역치 없이 저장됩니다`,
+      ready: false,
+    };
   })();
 
   const hidesTrialFeedback = !showsTrialFeedback(sessionMode);
@@ -391,77 +427,88 @@ export default function TrainingScreen() {
           >
             <Text style={styles.backText}>← 뒤로</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>🎵 음고 감각 적응 훈련</Text>
+          <Text style={styles.headerTitle}>음고 감각 적응 훈련</Text>
           <View style={styles.headerSpacer} />
         </View>
 
+        {/* 평가 모드 규칙 — 시작 전에 미리 알려야 "왜 정답을 안 알려주지?"가 안 생긴다 */}
+        {sessionMode === 'assessment' && (
+          <View style={styles.assessmentBanner}>
+            <Feather name="clipboard" size={16} color={COLORS.inkAccent} />
+            <Text style={styles.assessmentBannerText}>
+              {isSessionActive ? '평가 진행 중' : '평가 모드'} · 정답은 종료 후 공개
+            </Text>
+            <Text style={styles.assessmentBannerSub}>
+              최대 {ASSESSMENT.MAX_TRIALS}문항 자동 종료
+            </Text>
+          </View>
+        )}
+
         {/* 세션 모드 선택 (§4.3 평가/훈련 이원화) */}
         <View style={styles.sessionModeRow}>
-          <TouchableOpacity
-            style={[
-              styles.sessionModeBtn,
-              sessionMode === 'training' && styles.sessionModeBtnActive,
-              isSessionActive && styles.sessionModeBtnDisabled,
-            ]}
-            onPress={() => !isSessionActive && setSessionMode('training')}
-            activeOpacity={isSessionActive ? 1 : 0.7}
-            accessibilityRole="tab"
-            accessibilityLabel="훈련 모드"
-            accessibilityHint="문제마다 정답을 알려줍니다"
-            accessibilityState={{
-              selected: sessionMode === 'training',
-              disabled: isSessionActive,
-            }}
-          >
-            <Text
-              style={[
-                styles.sessionModeText,
-                sessionMode === 'training' && styles.sessionModeTextActive,
-              ]}
-            >
-              🏋️ 훈련
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.sessionModeBtn,
-              sessionMode === 'assessment' && styles.sessionModeBtnActive,
-              isSessionActive && styles.sessionModeBtnDisabled,
-            ]}
-            onPress={() => !isSessionActive && setSessionMode('assessment')}
-            activeOpacity={isSessionActive ? 1 : 0.7}
-            accessibilityRole="tab"
-            accessibilityLabel="평가 모드"
-            accessibilityHint="정답을 숨기고 정해진 조건에서 자동 종료합니다"
-            accessibilityState={{
-              selected: sessionMode === 'assessment',
-              disabled: isSessionActive,
-            }}
-          >
-            <Text
-              style={[
-                styles.sessionModeText,
-                sessionMode === 'assessment' && styles.sessionModeTextActive,
-              ]}
-            >
-              📋 평가
-            </Text>
-          </TouchableOpacity>
+          {SESSION_MODES.map(({ key, label, icon, a11yHint }) => {
+            const selected = sessionMode === key;
+            return (
+              <TouchableOpacity
+                key={key}
+                style={[
+                  styles.sessionModeBtn,
+                  selected && styles.sessionModeBtnActive,
+                  isSessionActive && !selected && styles.sessionModeBtnDimmed,
+                ]}
+                onPress={() => !isSessionActive && setSessionMode(key)}
+                activeOpacity={isSessionActive ? 1 : 0.7}
+                accessibilityRole="tab"
+                accessibilityLabel={`${label} 모드`}
+                accessibilityHint={a11yHint}
+                accessibilityState={{
+                  selected,
+                  disabled: isSessionActive,
+                }}
+              >
+                <Feather
+                  name={icon}
+                  size={15}
+                  color={selected ? COLORS.primary : COLORS.textMuted}
+                />
+                <Text
+                  style={[
+                    styles.sessionModeText,
+                    selected && styles.sessionModeTextActive,
+                  ]}
+                >
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {/* 사운드 모드 탭 */}
-        <ModeTab activeMode={soundMode} onModeChange={handleSoundModeChange} />
+        <ModeTab
+          activeMode={soundMode}
+          onModeChange={handleSoundModeChange}
+          disabled={isSessionActive}
+          disabledReason="세션 중에는 소리 종류를 바꿀 수 없습니다. 바꾸려면 세션을 끝내세요."
+        />
 
         {/* 정보 뱃지 */}
         <View style={styles.infoRow}>
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>음정 차이: {centsDifference}</Text>
+            <Text style={styles.badgeText} numberOfLines={1}>
+              음정 차이: <Text style={styles.badgeValue}>{centsDifference}</Text>
+            </Text>
           </View>
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>기준 {baseFreq} Hz</Text>
+            <Text style={styles.badgeText} numberOfLines={1}>
+              기준 <Text style={styles.badgeValue}>{baseFreq} Hz</Text>
+            </Text>
           </View>
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>🔥 연속: {streak}회</Text>
+            <Text style={styles.badgeText} numberOfLines={1}>
+              <Text style={styles.badgeMark}>◆ </Text>연속:{' '}
+              <Text style={styles.badgeValue}>{streak}회</Text>
+            </Text>
           </View>
         </View>
 
@@ -471,7 +518,6 @@ export default function TrainingScreen() {
             <Text style={styles.statsText}>
               시행 {totalTrials}회 · 정답률 {accuracy}%
             </Text>
-            <Text style={styles.statsSubText}>{progressHint}</Text>
           </View>
         )}
 
@@ -496,7 +542,23 @@ export default function TrainingScreen() {
           accessibilityLabel={PLAY_BUTTON_A11Y_LABEL[gameState]}
           accessibilityState={{ disabled: !canPressPlay(gameState) }}
         >
-          <Text style={styles.playButtonText}>
+          <Feather
+            name={
+              PLAY_BUTTON_ICON[
+                gameState
+              ] as React.ComponentProps<typeof Feather>['name']
+            }
+            size={16}
+            color={
+              canPressPlay(gameState) ? COLORS.onPrimary : COLORS.textSecondary
+            }
+          />
+          <Text
+            style={[
+              styles.playButtonText,
+              !canPressPlay(gameState) && styles.disabledPlayButtonText,
+            ]}
+          >
             {PLAY_BUTTON_LABEL[gameState]}
           </Text>
         </TouchableOpacity>
@@ -540,6 +602,18 @@ export default function TrainingScreen() {
           </View>
         )}
 
+        {/* 역치 산출 진행도 — 종료 판단 직전에 보이도록 종료 영역 바로 위에 둔다 */}
+        {isSessionActive && (
+          <Text
+            style={[
+              styles.thresholdProgressText,
+              thresholdProgress.ready && styles.thresholdProgressReady,
+            ]}
+          >
+            {thresholdProgress.text}
+          </Text>
+        )}
+
         {/* 세션 종료: 3회 미만은 진행 표시, 이후 종료 버튼 */}
         {isSessionActive && (
           totalTrials >= MIN_TRIALS_TO_END ? (
@@ -580,82 +654,118 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   scrollContent: {
-    paddingHorizontal: SPACING.xl,
+    paddingHorizontal: 18,
     paddingBottom: 40,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: SPACING.lg,
+    paddingTop: SPACING.xs,
+    paddingBottom: SPACING.md,
   },
   backButton: {
+    width: 56,
     paddingVertical: SPACING.sm,
-    paddingRight: SPACING.md,
   },
   backText: {
     color: COLORS.primary,
-    fontSize: FONT_SIZE.md,
+    fontSize: FONT_SIZE.lg,
     fontWeight: '600',
   },
   headerTitle: {
-    fontSize: FONT_SIZE.xxl,
-    fontWeight: 'bold',
+    flex: 1,
+    textAlign: 'center',
+    fontSize: FONT_SIZE.xl,
+    fontWeight: '700',
     color: COLORS.textPrimary,
   },
   headerSpacer: {
-    width: 50,
+    width: 56,
+  },
+  assessmentBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    backgroundColor: COLORS.ink,
+    borderRadius: RADIUS.md,
+    paddingVertical: 11,
+    paddingHorizontal: SPACING.lg - 2,
+    marginBottom: SPACING.md,
+  },
+  assessmentBannerText: {
+    flex: 1,
+    color: COLORS.inkText,
+    fontSize: FONT_SIZE.sm,
+    fontWeight: '700',
+  },
+  assessmentBannerSub: {
+    color: COLORS.inkMuted,
+    fontSize: FONT_SIZE.xs,
+    fontWeight: '600',
   },
   sessionModeRow: {
     flexDirection: 'row',
-    gap: SPACING.sm,
+    gap: SPACING.sm + 2,
     marginBottom: SPACING.md,
   },
   sessionModeBtn: {
     flex: 1,
-    paddingVertical: SPACING.sm,
+    flexDirection: 'row',
+    gap: 7,
+    height: 50,
     minHeight: MIN_TOUCH_TARGET,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: RADIUS.sm,
+    borderRadius: RADIUS.lg,
     borderWidth: 1,
     borderColor: COLORS.border,
-    backgroundColor: 'transparent',
+    backgroundColor: COLORS.surface,
   },
   sessionModeBtnActive: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.primarySoft,
+    borderWidth: 1.5,
     borderColor: COLORS.primary,
   },
-  sessionModeBtnDisabled: {
-    opacity: 0.5,
+  // 세션 중에는 못 고른 쪽을 눌러 두어 "지금은 잠겼다"를 드러낸다
+  sessionModeBtnDimmed: {
+    opacity: 0.55,
   },
   sessionModeText: {
     color: COLORS.textMuted,
-    fontSize: FONT_SIZE.sm,
+    fontSize: FONT_SIZE.lg,
     fontWeight: '600',
   },
   sessionModeTextActive: {
     color: COLORS.primary,
+    fontWeight: '700',
   },
   infoRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-    gap: SPACING.sm,
-    marginBottom: SPACING.lg,
+    gap: 7,
+    marginBottom: SPACING.md + 1,
   },
   badge: {
+    flex: 1,
+    height: 38,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.xs,
     backgroundColor: COLORS.surface,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: RADIUS.xxl,
+    borderRadius: RADIUS.md - 1,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
   badgeText: {
     color: COLORS.textSecondary,
-    fontSize: FONT_SIZE.sm,
+    fontSize: FONT_SIZE.xs + 1,
     fontWeight: '600',
+  },
+  badgeValue: {
+    color: COLORS.text,
+    fontWeight: '700',
+  },
+  badgeMark: {
+    color: COLORS.secondary,
   },
   statsRow: {
     alignItems: 'center',
@@ -666,54 +776,70 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.sm,
     fontWeight: '500',
   },
-  statsSubText: {
-    color: COLORS.textDisabled,
-    fontSize: FONT_SIZE.xs,
-    marginTop: 2,
-  },
   playButton: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    height: 56,
+    justifyContent: 'center',
     backgroundColor: COLORS.primary,
-    paddingVertical: SPACING.lg,
-    borderRadius: RADIUS.lg,
+    borderRadius: RADIUS.lg + 1,
     alignItems: 'center',
-    marginBottom: SPACING.xxl,
+    marginBottom: SPACING.lg,
+    elevation: ELEVATION.raised,
   },
   disabledPlayButton: {
     backgroundColor: COLORS.disabledButton,
+    elevation: ELEVATION.flat,
   },
   playButtonText: {
     color: COLORS.onPrimary,
     fontSize: FONT_SIZE.xl,
-    fontWeight: 'bold',
+    fontWeight: '700',
+  },
+  disabledPlayButtonText: {
+    color: COLORS.textSecondary,
   },
   noticeCard: {
-    padding: SPACING.lg,
-    borderRadius: RADIUS.md,
+    padding: SPACING.lg - 2,
+    borderRadius: RADIUS.lg,
     marginTop: SPACING.sm,
     borderWidth: 1,
     borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.surfaceSubtle,
   },
   noticeCardWarn: {
     borderColor: COLORS.secondary,
+    backgroundColor: COLORS.secondarySoft,
   },
   noticeText: {
-    color: COLORS.textSecondary,
-    fontSize: FONT_SIZE.md,
+    color: COLORS.textMuted,
+    fontSize: FONT_SIZE.sm,
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 20,
   },
   questionText: {
     color: COLORS.textSecondary,
-    fontSize: FONT_SIZE.lg,
+    fontSize: FONT_SIZE.md,
     textAlign: 'center',
     marginBottom: SPACING.lg,
-    fontWeight: '500',
+    fontWeight: '600',
+    lineHeight: 20,
+  },
+  thresholdProgressText: {
+    color: COLORS.secondaryText,
+    fontSize: FONT_SIZE.xs + 1,
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginTop: SPACING.lg,
+  },
+  thresholdProgressReady: {
+    color: COLORS.success,
   },
   endSessionButton: {
-    marginTop: SPACING.xl,
-    paddingVertical: SPACING.md,
-    borderRadius: RADIUS.md,
+    marginTop: SPACING.md,
+    paddingVertical: SPACING.lg - 2,
+    borderRadius: RADIUS.md + 1,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: COLORS.error,
@@ -722,10 +848,10 @@ const styles = StyleSheet.create({
   endSessionText: {
     color: COLORS.error,
     fontSize: FONT_SIZE.md,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   endProgress: {
-    marginTop: SPACING.xl,
+    marginTop: SPACING.lg,
     alignItems: 'center',
     gap: SPACING.sm,
   },
@@ -738,7 +864,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 6,
     borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.waveInactive,
+    backgroundColor: COLORS.border,
   },
   endProgressSegmentFilled: {
     backgroundColor: COLORS.primary,

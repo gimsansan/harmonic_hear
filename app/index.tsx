@@ -8,6 +8,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import Feather from '@expo/vector-icons/Feather';
 import { AppSettingsStorage } from '../src/storage/AppSettingsStorage';
 import {
   COLORS,
@@ -15,6 +16,7 @@ import {
   FONT_SIZE,
   RADIUS,
   MIN_TOUCH_TARGET,
+  ELEVATION,
 } from '../src/constants/theme';
 
 export default function HomeScreen() {
@@ -38,7 +40,9 @@ export default function HomeScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* 로고 영역 */}
         <View style={styles.logoSection}>
-          <Text style={styles.logoEmoji}>🎵</Text>
+          <View style={styles.logoTile}>
+            <Feather name="music" size={38} color={COLORS.primary} />
+          </View>
           <Text style={styles.appName}>HarmoniTune</Text>
           <Text style={styles.appNameKr}>하모니 튠</Text>
           <Text style={styles.tagline}>
@@ -55,8 +59,8 @@ export default function HomeScreen() {
             accessibilityRole="button"
             accessibilityLabel="음고 감각 적응 훈련 시작"
           >
-            <View style={styles.cardIconRow}>
-              <Text style={styles.cardIcon}>🎧</Text>
+            <View style={styles.cardIconTile}>
+              <Feather name="headphones" size={26} color={COLORS.primary} />
             </View>
             <Text style={styles.cardTitle}>음고 감각 적응 훈련</Text>
             <Text style={styles.cardDesc}>
@@ -76,9 +80,14 @@ export default function HomeScreen() {
               accessibilityRole="button"
               accessibilityLabel="훈련 통계 보기"
             >
-              <Text style={styles.subCardIcon}>📊</Text>
+              <Feather
+                name="bar-chart-2"
+                size={24}
+                color={COLORS.primary}
+                style={styles.subCardIcon}
+              />
               <Text style={styles.subCardTitle}>훈련 통계</Text>
-              <Text style={styles.subCardDesc}>누적 성과 & 기록</Text>
+              <Text style={styles.subCardDesc}>누적 성과 &amp; 기록</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -88,9 +97,14 @@ export default function HomeScreen() {
               accessibilityRole="button"
               accessibilityLabel="설정 및 정보"
             >
-              <Text style={styles.subCardIcon}>⚙️</Text>
+              <Feather
+                name="settings"
+                size={24}
+                color={COLORS.textMuted}
+                style={styles.subCardIcon}
+              />
               <Text style={styles.subCardTitle}>설정 및 정보</Text>
-              <Text style={styles.subCardDesc}>앱 환경 & 안내</Text>
+              <Text style={styles.subCardDesc}>앱 환경 &amp; 안내</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -114,107 +128,116 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   scrollContent: {
-    paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.lg,
+    paddingHorizontal: SPACING.xxl,
+    paddingBottom: SPACING.xxl,
     minHeight: '100%',
     justifyContent: 'space-between',
   },
   logoSection: {
     alignItems: 'center',
-    marginTop: SPACING.xl,
+    marginTop: SPACING.xxxl,
     marginBottom: SPACING.lg,
   },
-  logoEmoji: {
-    fontSize: 56,
-    marginBottom: SPACING.xs,
+  logoTile: {
+    width: 76,
+    height: 76,
+    borderRadius: RADIUS.xxxl,
+    backgroundColor: COLORS.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.lg,
   },
   appName: {
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: '800',
     color: COLORS.text,
-    letterSpacing: 1.5,
+    letterSpacing: 1,
   },
   appNameKr: {
     fontSize: FONT_SIZE.md,
     fontWeight: '500',
     color: COLORS.textMuted,
-    marginTop: 4,
+    marginTop: 5,
   },
   tagline: {
     fontSize: FONT_SIZE.sm,
     color: COLORS.textDisabled,
-    marginTop: SPACING.sm,
+    marginTop: SPACING.md,
     textAlign: 'center',
     lineHeight: 20,
   },
   cardSection: {
     marginVertical: SPACING.md,
+    gap: SPACING.lg - 2,
   },
   mainCard: {
     backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.xl,
-    padding: SPACING.lg,
+    borderRadius: RADIUS.xxxl,
+    paddingVertical: SPACING.xxl - 2,
+    paddingHorizontal: SPACING.xl,
     minHeight: MIN_TOUCH_TARGET,
-    borderWidth: 1,
+    borderWidth: 1.5,
     // 메인 동선임을 시각적으로 구분 (P3-11)
     borderColor: COLORS.primary,
-    marginBottom: SPACING.md,
+    elevation: ELEVATION.card,
   },
-  cardIconRow: {
-    marginBottom: SPACING.sm,
-  },
-  cardIcon: {
-    fontSize: 40,
+  cardIconTile: {
+    width: 52,
+    height: 52,
+    borderRadius: RADIUS.lg + 1,
+    backgroundColor: COLORS.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.lg - 2,
   },
   cardTitle: {
-    fontSize: FONT_SIZE.xl,
+    fontSize: 19,
     fontWeight: '700',
     color: COLORS.text,
-    marginBottom: SPACING.xs,
+    marginBottom: SPACING.xs + 2,
   },
   cardDesc: {
     fontSize: FONT_SIZE.sm,
     color: COLORS.textMuted,
-    lineHeight: 22,
-    marginBottom: SPACING.lg,
+    lineHeight: 20,
+    marginBottom: 18,
   },
   startBadge: {
     alignSelf: 'flex-start',
     backgroundColor: COLORS.primary,
-    paddingHorizontal: SPACING.lg,
+    paddingHorizontal: SPACING.xl,
     paddingVertical: SPACING.md,
-    borderRadius: RADIUS.md,
+    borderRadius: RADIUS.md + 1,
   },
   startBadgeText: {
     color: COLORS.onPrimary,
     fontSize: FONT_SIZE.md,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
   subGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: SPACING.md,
   },
   subCard: {
-    width: '48%',
+    flex: 1,
     backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md,
+    borderRadius: RADIUS.xl + 2,
+    padding: SPACING.lg,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
   subCardIcon: {
-    fontSize: 28,
-    marginBottom: SPACING.xs,
+    marginBottom: SPACING.sm + 2,
   },
   subCardTitle: {
-    fontSize: FONT_SIZE.md,
+    fontSize: FONT_SIZE.lg,
     fontWeight: '700',
     color: COLORS.text,
-    marginBottom: 2,
+    marginBottom: 3,
   },
   subCardDesc: {
-    fontSize: FONT_SIZE.xs,
-    color: COLORS.textMuted,
+    fontSize: FONT_SIZE.xs + 1,
+    color: COLORS.textDisabled,
   },
   disclaimerSection: {
     paddingVertical: SPACING.md,
