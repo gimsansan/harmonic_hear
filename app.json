@@ -26,7 +26,6 @@
         }
       ],
       "expo-font",
-      "expo-audio",
       "expo-asset",
       "react-native-audio-api"
     ],

@@ -184,9 +184,3 @@ export const ASSESSMENT = {
   MAX_TRIALS: 30,
 } as const;
 
-export const KEYZONE = {
-  /** 녹음 샘플 간격 (cent) */
-  SAMPLE_INTERVAL: 200,
-  /** 최대 피치 시프트 (cent, 절대값) */
-  MAX_SHIFT: 100,
-} as const;

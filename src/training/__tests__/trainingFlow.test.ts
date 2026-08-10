@@ -19,9 +19,9 @@ import {
 const ALL_STATES: GameState[] = [
   'idle',
   'playing',
-  'waiting',
+  'waiting', //재생 끝, 답변 대기
   'answered',
-  'interrupted',
+  'interrupted',//앱 이탈로 라운드 폐기
 ];
 
 describe('canSubmitAnswer — P0-1 답변 중복 제출 차단', () => {
