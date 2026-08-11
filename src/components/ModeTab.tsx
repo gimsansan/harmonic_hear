@@ -82,7 +82,7 @@ export default function ModeTab({
         style={[styles.container, disabled && styles.containerDisabled]}
         accessibilityRole="tablist"
       >
-        {renderTab('wave', '순수 파형 (DSP)', '순수 파형 모드')}
+        {renderTab('wave', '순수 파형', '순수 파형 모드')}
         {renderTab('voice', '사람 목소리(“아~”)', '사람 목소리 모드')}
       </View>
 

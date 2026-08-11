@@ -51,12 +51,13 @@ export default function ThresholdChart({ values }: ThresholdChartProps) {
         {latest != null ? (
           <View style={styles.valueRow}>
             <Text style={styles.value}>{latest}</Text>
-            <Text style={styles.valueUnit}>cent · 최근</Text>
+            <Text style={styles.valueUnit}>음 높이 차이 · 최근</Text>
           </View>
         ) : null}
         <View style={styles.emptyBox}>
           <Text style={styles.emptyText}>
-            세션이 2회 이상 쌓이면 변화를 그려 드립니다.
+            들을 수 있는 최소 차이가 나온 세션이 2회 이상이면 변화를 그려
+            드립니다.
           </Text>
         </View>
       </View>
@@ -99,10 +100,10 @@ export default function ThresholdChart({ values }: ThresholdChartProps) {
     <View style={styles.card}>
       <View style={styles.headerRow}>
         <View style={styles.headerLeft}>
-          <Text style={styles.eyebrow}>변별 역치 추이</Text>
+          <Text style={styles.eyebrow}>들을 수 있는 최소 차이 추이</Text>
           <View style={styles.valueRow}>
             <Text style={styles.value}>{last}</Text>
-            <Text style={styles.valueUnit}>cent · 최근</Text>
+            <Text style={styles.valueUnit}>음 높이 차이 · 최근</Text>
           </View>
         </View>
 

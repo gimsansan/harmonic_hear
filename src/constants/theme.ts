@@ -239,3 +239,12 @@ export const ASSESSMENT = {
   MAX_TRIALS: 30,
 } as const;
 
+/**
+ * 짧은 라벨 `역치`를 긴 말로 이어 주는 안내.
+ * 좁은 UI에는 `역치`를 쓰고, 탭하면 이 설명을 보여 줍니다.
+ */
+export const THRESHOLD_TERM_HELP = {
+  title: '역치',
+  body: '들을 수 있는 최소 차이입니다. 숫자가 낮을수록 더 정밀하게 듣고 있다는 뜻입니다.',
+} as const;
+

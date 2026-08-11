@@ -70,7 +70,7 @@ f = baseHz × 2^(cents / 1200)
 | 영역 | 역할 |
 |------|------|
 | UI (`training.tsx`) | 배지·상태 표시: `음정 차이: {centsDifference}` |
-| 세션/통계 | 시행별 격차, 세션 내 **최소 달성 cent**(최고 난이도 기록) |
+| 세션/통계 | 문항별 격차, 세션 내 **최소 달성 cent**(최고 난이도 기록) |
 | 키존/샘플 (`keyzoneUtils`, `KEYZONE`) | 샘플 간격 200 cent, detune 상한 ±100 cent — **자극 생성 품질**용 (난이도 계단과는 별 레이어) |
 | 시각화 (`SkiaWaveVisualizer`) | `440 Hz` / `? Hz`는 라벨 성격. 실제 라운드 `targetFreq`와 실시간 연동은 하지 않음 |
 

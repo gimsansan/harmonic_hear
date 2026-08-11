@@ -17,6 +17,7 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Feather from '@expo/vector-icons/Feather';
@@ -29,6 +30,7 @@ import {
   FONT_SIZE,
   RADIUS,
   MIN_TOUCH_TARGET,
+  THRESHOLD_TERM_HELP,
 } from '../src/constants/theme';
 
 // 헤더 뒤로가기 버튼의 최소 터치 영역
@@ -119,14 +121,32 @@ export default function StatsScreen() {
 
         {/* 보조 지표 타일 */}
         <View style={styles.tileRow}>
-          <View style={styles.tile}>
+          <TouchableOpacity
+            style={styles.tile}
+            onPress={() =>
+              Alert.alert(THRESHOLD_TERM_HELP.title, THRESHOLD_TERM_HELP.body)
+            }
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={`최고 역치 ${
+              stats?.bestThresholdCents ?? '없음'
+            }`}
+            accessibilityHint="역치 뜻을 안내합니다"
+          >
             <Text style={[styles.tileValue, styles.tileValueAccent]}>
               {stats?.bestThresholdCents != null
                 ? `${stats.bestThresholdCents}`
                 : '-'}
             </Text>
-            <Text style={styles.tileLabel}>최고 역치</Text>
-          </View>
+            <View style={styles.tileLabelRow}>
+              <Text style={styles.tileLabel}>최고 역치</Text>
+              <Feather
+                name="help-circle"
+                size={12}
+                color={COLORS.textDisabled}
+              />
+            </View>
+          </TouchableOpacity>
 
           <View style={styles.tile}>
             <Text style={styles.tileValue}>
@@ -149,7 +169,7 @@ export default function StatsScreen() {
         </View>
 
         <Text style={styles.summaryLine}>
-          총 {stats?.totalSessions ?? 0}세션 · {stats?.totalTrials ?? 0}시행
+          총 {stats?.totalSessions ?? 0}세션 · {stats?.totalTrials ?? 0}문항
           {stats && stats.totalSessions > stats.sessionsWithThreshold
             ? ` · 역치 산출 ${stats.sessionsWithThreshold}세션`
             : ''}
@@ -200,7 +220,7 @@ export default function StatsScreen() {
 
                 <View style={styles.sessionDetails}>
                   <View style={styles.detailItem}>
-                    <Text style={styles.detailLabel}>시행 수</Text>
+                    <Text style={styles.detailLabel}>문항 수</Text>
                     <Text style={styles.detailValue}>
                       {session.totalTrials}회
                     </Text>
@@ -212,7 +232,7 @@ export default function StatsScreen() {
                     </Text>
                   </View>
                   <View style={styles.detailItem}>
-                    <Text style={styles.detailLabel}>변별 역치</Text>
+                    <Text style={styles.detailLabel}>들을 수 있는 최소 차이</Text>
                     <Text
                       style={[
                         styles.detailValue,
@@ -302,6 +322,11 @@ const styles = StyleSheet.create({
     color: COLORS.textDisabled,
     fontSize: FONT_SIZE.xs,
     textAlign: 'center',
+  },
+  tileLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
   },
   summaryLine: {
     color: COLORS.textDisabled,

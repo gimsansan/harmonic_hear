@@ -109,18 +109,19 @@ export default function ResultScreen() {
 
         {/* 대표 지표 */}
         <View style={styles.heroCard}>
-          <Text style={styles.heroLabel}>변별 역치</Text>
+          <Text style={styles.heroLabel}>들을 수 있는 최소 차이</Text>
           {threshold != null ? (
             <>
               <Text style={styles.heroValue}>{threshold}</Text>
-              <Text style={styles.heroUnit}>cent · 낮을수록 정밀</Text>
+              <Text style={styles.heroUnit}>음 높이 차이 · 낮을수록 정밀</Text>
             </>
           ) : (
             <>
               <Text style={styles.heroValueMuted}>—</Text>
               <Text style={styles.heroUnit}>
-                난이도 방향 전환 {reversalCount}회{'\n'}
-                {STAIRCASE.THRESHOLD_MIN_REVERSALS}회부터 산출됩니다
+                난이도 바뀐 횟수 {reversalCount}회{'\n'}
+                {STAIRCASE.THRESHOLD_MIN_REVERSALS}회부터 산출됩니다{'\n'}
+                세션은 저장됐지만, 최소 차이는 아직 계산 전입니다
               </Text>
             </>
           )}
@@ -161,7 +162,7 @@ export default function ResultScreen() {
         <View style={styles.grid}>
           <View style={styles.cell}>
             <Text style={styles.cellValue}>{session.totalTrials}</Text>
-            <Text style={styles.cellLabel}>시행</Text>
+            <Text style={styles.cellLabel}>문항</Text>
           </View>
           <View style={styles.cell}>
             <Text style={[styles.cellValue, styles.cellValueAccent]}>
@@ -186,7 +187,7 @@ export default function ResultScreen() {
             </Text>
             {reversalCount > 0 && (
               <Text style={styles.trackHint}>
-                방향 전환 {reversalCount}회 · 전환 지점{' '}
+                난이도 바뀐 횟수 {reversalCount}회 · 전환 지점{' '}
                 {session.reversals?.join(', ')}
               </Text>
             )}
@@ -195,7 +196,7 @@ export default function ResultScreen() {
 
         <Text style={styles.note}>
           정답률은 참고용입니다. 이 훈련은 찍어도 절반은 맞기 때문에,
-          성장은 <Text style={styles.emphasis}>변별 역치</Text>로 보는 편이 정확합니다.
+          성장은 <Text style={styles.emphasis}>들을 수 있는 최소 차이</Text>로 보는 편이 정확합니다.
         </Text>
 
         <TouchableOpacity

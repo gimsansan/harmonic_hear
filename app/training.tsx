@@ -50,6 +50,7 @@ import {
   AUDIO,
   ASSESSMENT,
   STAIRCASE,
+  THRESHOLD_TERM_HELP,
   REFERENCE_PRESETS,
   MIN_TOUCH_TARGET,
   ELEVATION,
@@ -60,7 +61,7 @@ import SkiaWaveVisualizer from '../src/components/SkiaWaveVisualizer';
 import AnswerButtons from '../src/components/AnswerButtons';
 import FeedbackCard from '../src/components/FeedbackCard';
 
-/** 세션 종료 버튼 노출에 필요한 최소 시행 수 */
+/** 세션 종료 버튼 노출에 필요한 최소 문항 수 */
 const MIN_TRIALS_TO_END = 3;
 
 /** 세션 모드 탭 정의 — JSX에서 두 번 복붙하던 것을 표로 뺐다 */
@@ -394,7 +395,7 @@ export default function TrainingScreen() {
   const thresholdProgress = (() => {
     if (sessionMode === 'assessment') {
       return {
-        text: `방향 전환 ${reversalCount}/${ASSESSMENT.TARGET_REVERSALS} · 최대 ${ASSESSMENT.MAX_TRIALS}문항에서 자동 종료`,
+        text: `난이도 바뀐 횟수 ${reversalCount}/${ASSESSMENT.TARGET_REVERSALS} · 최대 ${ASSESSMENT.MAX_TRIALS}문항에서 자동 종료`,
         ready: reversalCount >= STAIRCASE.THRESHOLD_MIN_REVERSALS,
       };
     }
@@ -402,7 +403,7 @@ export default function TrainingScreen() {
       return { text: '✓ 변별 역치 산출 가능 — 지금 끝내도 기록에 남습니다', ready: true };
     }
     return {
-      text: `역치 산출까지 난이도 방향 전환 ${reversalCount}/${STAIRCASE.THRESHOLD_MIN_REVERSALS} · 지금 끝내면 역치 없이 저장됩니다`,
+      text: `역치 산출까지 난이도 바뀐 횟수 ${reversalCount}/${STAIRCASE.THRESHOLD_MIN_REVERSALS} · 지금 끝내면 역치 없이 저장됩니다`,
       ready: false,
     };
   })();
@@ -516,7 +517,7 @@ export default function TrainingScreen() {
         {totalTrials > 0 && (
           <View style={styles.statsRow}>
             <Text style={styles.statsText}>
-              시행 {totalTrials}회 · 정답률 {accuracy}%
+              문항 {totalTrials}회 · 정답률 {accuracy}%
             </Text>
           </View>
         )}
@@ -603,16 +604,45 @@ export default function TrainingScreen() {
         )}
 
         {/* 역치 산출 진행도 — 종료 판단 직전에 보이도록 종료 영역 바로 위에 둔다 */}
-        {isSessionActive && (
-          <Text
-            style={[
-              styles.thresholdProgressText,
-              thresholdProgress.ready && styles.thresholdProgressReady,
-            ]}
-          >
-            {thresholdProgress.text}
-          </Text>
-        )}
+        {isSessionActive &&
+          (sessionMode === 'training' ? (
+            <TouchableOpacity
+              style={styles.thresholdProgressRow}
+              onPress={() =>
+                Alert.alert(THRESHOLD_TERM_HELP.title, THRESHOLD_TERM_HELP.body)
+              }
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={thresholdProgress.text}
+              accessibilityHint="역치 뜻을 안내합니다"
+            >
+              <Text
+                style={[
+                  styles.thresholdProgressText,
+                  thresholdProgress.ready && styles.thresholdProgressReady,
+                ]}
+              >
+                {thresholdProgress.text}
+              </Text>
+              <Feather
+                name="help-circle"
+                size={14}
+                color={
+                  thresholdProgress.ready ? COLORS.success : COLORS.secondaryText
+                }
+              />
+            </TouchableOpacity>
+          ) : (
+            <Text
+              style={[
+                styles.thresholdProgressText,
+                styles.thresholdProgressStandalone,
+                thresholdProgress.ready && styles.thresholdProgressReady,
+              ]}
+            >
+              {thresholdProgress.text}
+            </Text>
+          ))}
 
         {/* 세션 종료: 3회 미만은 진행 표시, 이후 종료 버튼 */}
         {isSessionActive && (
@@ -825,12 +855,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     lineHeight: 20,
   },
+  thresholdProgressRow: {
+    marginTop: SPACING.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.xs,
+    paddingVertical: SPACING.xs,
+  },
   thresholdProgressText: {
     color: COLORS.secondaryText,
     fontSize: FONT_SIZE.xs + 1,
     fontWeight: '600',
     textAlign: 'center',
     lineHeight: 18,
+    flexShrink: 1,
+  },
+  thresholdProgressStandalone: {
     marginTop: SPACING.lg,
   },
   thresholdProgressReady: {
